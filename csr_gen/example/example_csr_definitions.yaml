@@ -1,0 +1,255 @@
+# CSR (Control/Status Register) Definitions
+# DSP-4CH-100M Register Map
+# Format: YAML
+#
+# Each module has:
+#   - base_address: Base address for the module (hex)
+#   - registers: List of 32-bit registers
+#     - name: Register name
+#     - offset: Offset from base address (hex)
+#     - access: 'RW' (read-write), 'RO' (read-only), 'WO' (write-only)
+#     - reset: Reset value (hex)
+#     - description: Register description
+#     - fields: Bit field definitions
+#       - name: Field name
+#       - bits: Bit range [msb:lsb] or single bit
+#       - description: Field description
+
+---
+modules:
+  - name: SYSTEM
+    base_address: 0x00000000
+    description: System control and status module
+    registers:
+      - name: VERSION
+        offset: 0x0000
+        access: RO
+        reset: 0x01000000
+        description: Version and identification register
+        fields:
+          - name: MAJOR
+            bits: [31, 24]
+            description: Major version number
+          - name: MINOR
+            bits: [23, 16]
+            description: Minor version number
+          - name: PATCH
+            bits: [15, 8]
+            description: Patch version number
+          - name: BUILD
+            bits: [7, 0]
+            description: Build number
+      
+      - name: CONTROL
+        offset: 0x0004
+        access: RW
+        reset: 0x00000000
+        description: System control register
+        fields:
+          - name: RESET
+            bits: [0]
+            description: Software reset (write 1 to reset)
+          - name: ENABLE
+            bits: [1]
+            description: System enable (1=enabled, 0=disabled)
+          - name: DEBUG_MODE
+            bits: [2]
+            description: Debug mode enable
+          - name: RESERVED
+            bits: [31, 3]
+            description: Reserved for future use
+      
+      - name: STATUS
+        offset: 0x0008
+        access: RO
+        reset: 0x00000000
+        description: System status register
+        fields:
+          - name: READY
+            bits: [0]
+            description: System ready flag
+          - name: ERROR
+            bits: [1]
+            description: Error flag
+          - name: LOCKED
+            bits: [2]
+            description: Clock locked status
+          - name: RESERVED
+            bits: [31, 3]
+            description: Reserved
+      
+      - name: LED_CONTROL
+        offset: 0x000C
+        access: RW
+        reset: 0x00000000
+        description: LED control register
+        fields:
+          - name: LED0
+            bits: [0]
+            description: LED0 control (1=on, 0=off)
+          - name: LED1
+            bits: [1]
+            description: LED1 control (1=on, 0=off)
+          - name: LED2
+            bits: [2]
+            description: LED2 control (1=on, 0=off)
+          - name: LED3
+            bits: [3]
+            description: LED3 control (1=on, 0=off)
+          - name: RESERVED
+            bits: [31, 4]
+            description: Reserved
+      
+      - name: SCRATCH0
+        offset: 0x0010
+        access: RW
+        reset: 0x00000000
+        description: Scratch register 0 for testing
+        fields:
+          - name: DATA
+            bits: [31, 0]
+            description: Scratch data
+      
+      - name: SCRATCH1
+        offset: 0x0014
+        access: RW
+        reset: 0xDEADBEEF
+        description: Scratch register 1 for testing
+        fields:
+          - name: DATA
+            bits: [31, 0]
+            description: Scratch data
+      
+      - name: TIMESTAMP_LO
+        offset: 0x0018
+        access: RO
+        reset: 0x00000000
+        description: Timestamp counter lower 32 bits
+        fields:
+          - name: COUNT
+            bits: [31, 0]
+            description: Lower 32 bits of timestamp
+      
+      - name: TIMESTAMP_HI
+        offset: 0x001C
+        access: RO
+        reset: 0x00000000
+        description: Timestamp counter upper 32 bits
+        fields:
+          - name: COUNT
+            bits: [31, 0]
+            description: Upper 32 bits of timestamp
+      
+      - name: TEST_REG
+        offset: 0x0020
+        access: RO
+        reset: 0x12345678
+        description: Read only test register
+        fields:
+          - name: VAL
+            bits: [31, 0]
+            description: Read only test register
+
+
+  - name: ADC
+    base_address: 0x00001000
+    description: ADC control and status module
+    registers:
+      - name: CONFIG
+        offset: 0x0000
+        access: RW
+        reset: 0x00000000
+        description: ADC configuration register
+        fields:
+          - name: ENABLE_CH0
+            bits: [0]
+            description: Enable channel 0
+          - name: ENABLE_CH1
+            bits: [1]
+            description: Enable channel 1
+          - name: ENABLE_CH2
+            bits: [2]
+            description: Enable channel 2
+          - name: ENABLE_CH3
+            bits: [3]
+            description: Enable channel 3
+          - name: SAMPLE_RATE
+            bits: [11, 8]
+            description: Sample rate divider
+          - name: RESERVED
+            bits: [31, 12]
+            description: Reserved
+      
+      - name: STATUS
+        offset: 0x0004
+        access: RO
+        reset: 0x00000000
+        description: ADC status register
+        fields:
+          - name: LOCKED
+            bits: [0]
+            description: ADC clock locked
+          - name: ALIGNED
+            bits: [1]
+            description: Channels aligned
+          - name: OVERFLOW
+            bits: [2]
+            description: Data overflow detected
+          - name: RESERVED
+            bits: [31, 3]
+            description: Reserved
+      
+      - name: SAMPLE_COUNT
+        offset: 0x0008
+        access: RO
+        reset: 0x00000000
+        description: Sample counter
+        fields:
+          - name: COUNT
+            bits: [31, 0]
+            description: Number of samples captured
+
+  - name: FFT
+    base_address: 0x00002000
+    description: FFT processing module
+    registers:
+      - name: CONFIG
+        offset: 0x0000
+        access: RW
+        reset: 0x00001000
+        description: FFT configuration register
+        fields:
+          - name: ENABLE
+            bits: [0]
+            description: FFT enable
+          - name: SIZE
+            bits: [4, 1]
+            description: FFT size (0=1K, 1=2K, 2=4K, 3=8K)
+          - name: WINDOW
+            bits: [7, 5]
+            description: Window function (0=Rect, 1=Hanning, 2=Hamming, 3=Blackman)
+          - name: OVERLAP
+            bits: [9, 8]
+            description: Overlap (0=0%, 1=25%, 2=50%, 3=75%)
+          - name: RESERVED
+            bits: [31, 10]
+            description: Reserved
+      
+      - name: STATUS
+        offset: 0x0004
+        access: RO
+        reset: 0x00000000
+        description: FFT status register
+        fields:
+          - name: BUSY
+            bits: [0]
+            description: FFT processing active
+          - name: DONE
+            bits: [1]
+            description: FFT processing complete
+          - name: OVERFLOW
+            bits: [2]
+            description: Output overflow detected
+          - name: RESERVED
+            bits: [31, 3]
+            description: Reserved
