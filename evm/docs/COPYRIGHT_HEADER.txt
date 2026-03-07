@@ -1,9 +1,0 @@
-//==============================================================================
-// EVM - Embedded Verification Methodology
-// Copyright (c) 2026 Differential Audio Inc.
-// Licensed under MIT License - see LICENSE file for full terms
-//==============================================================================
-// Description: [Brief description of file]
-// Author: Differential Audio Inc., EVM Contributors
-// Date: [Date]
-//==============================================================================

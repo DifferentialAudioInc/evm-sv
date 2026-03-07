@@ -29,8 +29,8 @@ evm/
 │   ├── gen_stimulus.py        # Stimulus generation
 │   └── analyze_spectrum.py   # Spectrum analysis
 │
-└── evm/                        # SystemVerilog Framework
-    ├── evm/                    # Base classes
+└── vkit/                       # SystemVerilog Framework
+    ├── src/                    # Base classes
     │   ├── evm_pkg.sv
     │   ├── evm_object.sv
     │   ├── evm_component.sv
@@ -135,9 +135,10 @@ See `evm/docs/` for architecture and usage guidelines.
 ## Documentation
 
 - **CSR Generator:** `csr_gen/README.md`
-- **EVM Architecture:** `evm/docs/EVM_ARCHITECTURE.md`
-- **Coding Rules:** `evm/docs/EVM_RULES.md`
-- **Examples:** `csr_gen/example/` and `evm/docs/evm_vkit/`
+- **EVM Architecture:** `evm/vkit/docs/EVM_ARCHITECTURE.md`
+- **Streaming Guide:** `evm/vkit/docs/STREAMING_GUIDE.md` - Transaction vs Streaming agents
+- **Coding Rules:** `evm/vkit/docs/EVM_RULES.md`
+- **Examples:** `csr_gen/example/` and `evm/vkit/docs/evm_vkit/`
 
 ## About Differential Audio Inc
 

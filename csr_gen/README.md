@@ -7,6 +7,7 @@ Part of the EVM (Embedded Verification Module) package.
 The CSR (Control/Status Register) Generator is a Python tool that generates:
 - **SystemVerilog RTL** - Synthesizable register modules with packages
 - **C Header Files** - Hardware register definitions for firmware
+- **EVM Register Models** - Verification register models (lightweight RAL)
 - **Documentation** - Complete register map in Markdown format
 - **Path Definitions** - Include paths for build systems
 
@@ -81,14 +82,78 @@ For each module defined in your YAML file:
 
 ```
 <module_name>/
-├── <module>_csr_pkg.sv    # SystemVerilog package
-├── <module>_csr.sv        # SystemVerilog module
-└── <module>_csr.h         # C header
+├── <module>_csr_pkg.sv      # SystemVerilog package
+├── <module>_csr.sv          # SystemVerilog RTL module
+├── <module>_csr.h           # C header
+└── <module>_reg_model.sv    # EVM register model (verification)
 ```
 
 ## Integration
 
-### SystemVerilog
+### EVM Register Model (Verification)
+
+The generator automatically creates EVM register models for verification:
+
+```systemverilog
+import evm_pkg::*;
+
+class my_test extends evm_base_test;
+    system_reg_model reg_model;
+    my_axi_agent     axi_agent;
+    
+    function void build_phase();
+        super.build_phase();
+        
+        // Create register model
+        reg_model = new("system_reg_model");
+        
+        // Create and configure agent
+        axi_agent = new("axi_agent", this);
+        
+        // Connect register model to agent
+        reg_model.configure(axi_agent);
+        
+        // Reset to initial values
+        reg_model.reset();
+    endfunction
+    
+    virtual task main_phase();
+        bit status;
+        bit [31:0] value;
+        
+        super.main_phase();
+        raise_objection("test");
+        
+        // Write using generated methods
+        reg_model.write_control(32'h0000_0003, status);
+        
+        // Read using generated methods
+        reg_model.read_status(value, status);
+        
+        // Field-level access
+        evm_reg_field enable = reg_model.control.get_field_by_name("ENABLE");
+        enable.set(1);
+        reg_model.control.write(reg_model.control.get(), status);
+        
+        // Dump all registers
+        reg_model.dump();
+        
+        drop_objection("test");
+    endtask
+endclass
+```
+
+**Features:**
+- Automatic field creation with correct access policies (RW, RO, WO, etc.)
+- Type-safe register and field access
+- Generates `evm_csr_item` transactions automatically
+- Integrates with any agent that accepts CSR items
+- Convenience methods for each register (e.g., `write_control`, `read_status`)
+- Mirror/predict functionality built-in
+
+See `evm/vkit/docs/REGISTER_MODEL.md` for complete register model documentation.
+
+### SystemVerilog RTL
 
 ```systemverilog
 // Include path definitions

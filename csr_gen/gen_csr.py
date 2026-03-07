@@ -12,6 +12,7 @@ Repository: https://github.com/DifferentialAudioInc/evm-sv
 
 import yaml
 import sys
+import os
 from pathlib import Path
 from datetime import datetime
 
@@ -25,10 +26,51 @@ class CSRGenerator:
         self.modules = self.data['modules']
         self.timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
+    def needs_regeneration(self, output_path):
+        """Check if output files need to be regenerated based on timestamps"""
+        yaml_path = Path(self.yaml_file)
+        
+        # Get YAML file modification time
+        if not yaml_path.exists():
+            return True
+        
+        yaml_mtime = yaml_path.stat().st_mtime
+        
+        # Check representative output files
+        check_files = [
+            output_path / "register_map.md",
+            output_path / "csr_files.f"
+        ]
+        
+        # Check per-module files (first module as representative)
+        if self.modules:
+            module_name = self.modules[0]['name'].lower()
+            module_dir = output_path / module_name
+            check_files.extend([
+                module_dir / f"{module_name}_csr_pkg.sv",
+                module_dir / f"{module_name}_csr.sv",
+                module_dir / f"{module_name}_csr.h",
+                module_dir / f"{module_name}_reg_model.sv"
+            ])
+        
+        # Check if all files exist and are newer than YAML
+        for file_path in check_files:
+            if not file_path.exists():
+                return True
+            if yaml_mtime > file_path.stat().st_mtime:
+                return True
+        
+        return False
+    
     def generate_all(self, output_dir='.'):
         """Generate all RTL and C header files"""
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
+        
+        # Check if regeneration is needed
+        if not self.needs_regeneration(output_path):
+            print("RTL, RAL, and C Headers are up to date, not regenerating.")
+            return
         
         # Generate per-module files in separate directories
         for module in self.modules:
@@ -51,6 +93,11 @@ class CSRGenerator:
             h_file = module_dir / f"{module_name}_csr.h"
             self.generate_c_header(module, h_file)
             print(f"Generated: {h_file}")
+            
+            # Generate register model
+            reg_model_file = module_dir / f"{module_name}_reg_model.sv"
+            self.generate_reg_model(module, reg_model_file)
+            print(f"Generated: {reg_model_file}")
         
         # Generate master files
         master_h = output_path / "dsp_regs.h"
@@ -70,6 +117,11 @@ class CSRGenerator:
         doc_file = output_path / "register_map.md"
         self.generate_documentation(doc_file)
         print(f"Generated: {doc_file}")
+        
+        # Generate top-level register model
+        top_reg_model = output_path / "top_reg_model.sv"
+        self.generate_top_reg_model(top_reg_model)
+        print(f"Generated: {top_reg_model}")
         
         # Generate file lists
         sv_filelist = output_path / "csr_files.f"
@@ -432,6 +484,274 @@ class CSRGenerator:
         lines.append("")
         
         lines.append(f"#endif /* {guard} */")
+        
+        with open(output_file, 'w') as f:
+            f.write('\n'.join(lines))
+    
+    def generate_reg_model(self, module, output_file):
+        """Generate EVM register model (lightweight RAL)"""
+        module_name = module['name'].lower()
+        MODULE_NAME = module['name'].upper()
+        
+        # Map YAML access types to EVM reg access types
+        access_map = {
+            'RW': 'EVM_REG_RW',
+            'RO': 'EVM_REG_RO',
+            'WO': 'EVM_REG_WO',
+            'RC': 'EVM_REG_RC',
+            'RS': 'EVM_REG_RS',
+            'WC': 'EVM_REG_WC',
+            'WS': 'EVM_REG_WS',
+            'W1C': 'EVM_REG_W1C',
+            'W1S': 'EVM_REG_W1S'
+        }
+        
+        lines = []
+        lines.append(f"//{'='*78}")
+        lines.append(f"// Class: {module_name}_reg_model")
+        lines.append(f"// Description: EVM register model for {module['description']}")
+        lines.append(f"// Generated: {self.timestamp}")
+        lines.append(f"// Source: {self.yaml_file}")
+        lines.append(f"//{'='*78}")
+        lines.append("")
+        lines.append(f"class {module_name}_reg_model extends evm_object;")
+        lines.append("")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    // Register Block and Registers")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    evm_reg_block reg_block;")
+        lines.append("")
+        
+        # Declare register handles
+        for reg in module['registers']:
+            reg_name_lower = reg['name'].lower()
+            lines.append(f"    evm_reg {reg_name_lower};")
+        
+        lines.append("")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    // Constructor")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    function new(string name = \"{module_name}_reg_model\");")
+        lines.append(f"        super.new(name);")
+        lines.append(f"        build();")
+        lines.append(f"    endfunction")
+        lines.append("")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    // Build - Create register block and registers")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    virtual function void build();")
+        lines.append(f"        evm_reg_field field;")
+        lines.append("")
+        
+        # Get base address
+        base_addr = module['base_address']
+        if isinstance(base_addr, str):
+            base_addr_val = base_addr
+        else:
+            base_addr_val = f"64'h{base_addr:08X}"
+        
+        lines.append(f"        // Create register block")
+        lines.append(f"        reg_block = new(\"{module_name}\", {base_addr_val});")
+        lines.append("")
+        
+        # Build each register
+        for reg in module['registers']:
+            reg_name = reg['name']
+            reg_name_lower = reg_name.lower()
+            
+            # Get offset
+            offset = reg['offset']
+            if isinstance(offset, str):
+                offset_val = offset
+            else:
+                offset_val = f"32'h{offset:08X}"
+            
+            # Get reset value
+            reset = reg['reset']
+            if isinstance(reset, str):
+                reset_val = reset
+            else:
+                reset_val = f"32'h{reset:08X}"
+            
+            lines.append(f"        // Build {reg_name} register")
+            lines.append(f"        {reg_name_lower} = new(\"{reg_name}\", {base_addr_val} + {offset_val}, 32);")
+            lines.append("")
+            
+            # Add fields to register
+            for field in reg['fields']:
+                field_name = field['name']
+                field_name_lower = field_name.lower()
+                bits = field['bits']
+                
+                # Calculate LSB and width
+                if isinstance(bits, list):
+                    if len(bits) == 2:
+                        msb = bits[0]
+                        lsb = bits[1]
+                        width = msb - lsb + 1
+                    else:
+                        lsb = bits[0]
+                        width = 1
+                else:
+                    lsb = bits
+                    width = 1
+                
+                # Get field access type
+                field_access = access_map.get(reg.get('access', 'RW'), 'EVM_REG_RW')
+                if 'access' in field:
+                    field_access = access_map.get(field['access'], field_access)
+                
+                # Calculate field reset value from register reset
+                if isinstance(reset, int):
+                    field_reset = (reset >> lsb) & ((1 << width) - 1)
+                    field_reset_val = f"{width}'h{field_reset:X}"
+                else:
+                    field_reset_val = "0"
+                
+                lines.append(f"        field = new(\"{field_name}\", {lsb}, {width}, {field_access}, {field_reset_val});")
+                lines.append(f"        {reg_name_lower}.add_field(field);")
+            
+            lines.append(f"        reg_block.add_reg({reg_name_lower});")
+            lines.append("")
+        
+        lines.append(f"        log_info(\"Register model '{module_name}' built successfully\", EVM_LOW);")
+        lines.append(f"    endfunction")
+        lines.append("")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    // Configure - Set agent for transaction execution")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    virtual function void configure(evm_component agent);")
+        lines.append(f"        reg_block.set_agent(agent);")
+        lines.append(f"        log_info(\"Register model configured with agent\", EVM_LOW);")
+        lines.append(f"    endfunction")
+        lines.append("")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    // Reset - Reset all registers to their reset values")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    virtual function void reset(string kind = \"HARD\");")
+        lines.append(f"        reg_block.reset(kind);")
+        lines.append(f"    endfunction")
+        lines.append("")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    // Convenience Methods")
+        lines.append(f"    //==========================================================================")
+        lines.append("")
+        
+        # Add typed access methods for each register
+        for reg in module['registers']:
+            reg_name = reg['name']
+            reg_name_lower = reg_name.lower()
+            
+            # Write method
+            if reg['access'] in ['RW', 'WO']:
+                lines.append(f"    // Write to {reg_name}")
+                lines.append(f"    task write_{reg_name_lower}(bit [31:0] value, output bit status);")
+                lines.append(f"        {reg_name_lower}.write(value, status);")
+                lines.append(f"    endtask")
+                lines.append("")
+            
+            # Read method
+            if reg['access'] in ['RW', 'RO']:
+                lines.append(f"    // Read from {reg_name}")
+                lines.append(f"    task read_{reg_name_lower}(output bit [31:0] value, output bit status);")
+                lines.append(f"        bit [63:0] val64;")
+                lines.append(f"        {reg_name_lower}.read(val64, status);")
+                lines.append(f"        value = val64[31:0];")
+                lines.append(f"    endtask")
+                lines.append("")
+        
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    // Dump - Print all register values")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    virtual function void dump();")
+        lines.append(f"        reg_block.dump();")
+        lines.append(f"    endfunction")
+        lines.append("")
+        lines.append(f"endclass : {module_name}_reg_model")
+        
+        with open(output_file, 'w') as f:
+            f.write('\n'.join(lines))
+    
+    def generate_top_reg_model(self, output_file):
+        """Generate top-level register model that includes all module models"""
+        lines = []
+        lines.append(f"//{'='*78}")
+        lines.append(f"// Class: top_reg_model")
+        lines.append(f"// Description: Top-level register model containing all modules")
+        lines.append(f"// Generated: {self.timestamp}")
+        lines.append(f"// Source: {self.yaml_file}")
+        lines.append(f"//{'='*78}")
+        lines.append("")
+        lines.append(f"class top_reg_model extends evm_object;")
+        lines.append("")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    // Module Register Models")
+        lines.append(f"    //==========================================================================")
+        
+        # Declare all module register models
+        for module in self.modules:
+            module_name = module['name'].lower()
+            lines.append(f"    {module_name}_reg_model {module_name};")
+        
+        lines.append("")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    // Constructor")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    function new(string name = \"top_reg_model\");")
+        lines.append(f"        super.new(name);")
+        lines.append(f"        build();")
+        lines.append(f"    endfunction")
+        lines.append("")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    // Build - Create all module register models")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    virtual function void build();")
+        
+        for module in self.modules:
+            module_name = module['name'].lower()
+            lines.append(f"        {module_name} = new(\"{module_name}_reg_model\");")
+        
+        lines.append(f"        log_info(\"Top-level register model built successfully\", EVM_LOW);")
+        lines.append(f"    endfunction")
+        lines.append("")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    // Configure - Set agent for all module register models")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    virtual function void configure(evm_component agent);")
+        
+        for module in self.modules:
+            module_name = module['name'].lower()
+            lines.append(f"        {module_name}.configure(agent);")
+        
+        lines.append(f"        log_info(\"All module register models configured with agent\", EVM_LOW);")
+        lines.append(f"    endfunction")
+        lines.append("")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    // Reset - Reset all module register models")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    virtual function void reset(string kind = \"HARD\");")
+        
+        for module in self.modules:
+            module_name = module['name'].lower()
+            lines.append(f"        {module_name}.reset(kind);")
+        
+        lines.append(f"    endfunction")
+        lines.append("")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    // Dump - Print all register values from all modules")
+        lines.append(f"    //==========================================================================")
+        lines.append(f"    virtual function void dump();")
+        lines.append(f"        log_info(\"=== Top-Level Register Map ===\", EVM_NONE);")
+        
+        for module in self.modules:
+            module_name = module['name'].lower()
+            module_desc = module['description']
+            lines.append(f"        log_info(\"\\n--- {module['name']} ({module_desc}) ---\", EVM_NONE);")
+            lines.append(f"        {module_name}.dump();")
+        
+        lines.append(f"    endfunction")
+        lines.append("")
+        lines.append(f"endclass : top_reg_model")
         
         with open(output_file, 'w') as f:
             f.write('\n'.join(lines))
