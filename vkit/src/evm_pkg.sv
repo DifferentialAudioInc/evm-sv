@@ -1,0 +1,51 @@
+//==============================================================================
+// EVM - Embedded Verification Methodology
+// Copyright (c) 2026 Differential Audio Inc.
+// Licensed under MIT License - see LICENSE file for full terms
+//==============================================================================
+
+//==============================================================================
+// Package: evm_pkg
+// Description: Embedded Verification Methodology (EVM) Framework Package
+//              Contains all base classes for the EVM framework
+// Author: Engineering Team
+// Date: 2026-03-06
+//==============================================================================
+
+package evm_pkg;
+    
+    // Include all EVM framework files in dependency order
+    
+    // Core infrastructure
+    `include "evm_log.sv"
+    `include "evm_object.sv"
+    `include "evm_component.sv"
+    
+    // Sequence infrastructure
+    `include "evm_sequence_item.sv"
+    `include "evm_csr_item.sv"
+    `include "evm_sequence.sv"
+    `include "evm_csr_sequence.sv"
+    `include "evm_sequencer.sv"
+    
+    // Agent components
+    `include "evm_monitor.sv"
+    `include "evm_driver.sv"
+    `include "evm_agent.sv"
+    
+    // Register model (lightweight RAL)
+    `include "evm_reg_field.sv"
+    `include "evm_reg.sv"
+    `include "evm_reg_block.sv"
+    
+    // Streaming components
+    `include "evm_stream_cfg.sv"
+    `include "evm_stream_driver.sv"
+    `include "evm_stream_monitor.sv"
+    `include "evm_stream_agent.sv"
+    
+    // Test infrastructure
+    `include "evm_root.sv"
+    `include "evm_base_test.sv"
+    
+endpackage : evm_pkg
