@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """
-CSR Generator for DSP-4CH-100M
+CSR Generator
 Generates SystemVerilog RTL and C header files from YAML register definitions
 
-Author: Engineering Team
-Date: 2026-03-04
+Copyright (c) 2026 Differential Audio Inc
+Licensed under MIT License - see LICENSE file for details
+
+Part of the EVM (Embedded Verification Module) Framework
+Repository: https://github.com/DifferentialAudioInc/evm-sv
 """
 
 import yaml

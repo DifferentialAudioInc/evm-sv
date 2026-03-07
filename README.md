@@ -4,7 +4,8 @@
 
 A SystemVerilog verification framework with integrated CSR generation tooling.
 
-**Repository:** https://github.com/DifferentialAudioInc/evm-sv
+**Repository:** https://github.com/DifferentialAudioInc/evm-sv  
+**Developed by:** [Differential Audio Inc](https://github.com/DifferentialAudioInc)
 
 ## Overview
 
@@ -138,17 +139,31 @@ See `evm/docs/` for architecture and usage guidelines.
 - **Coding Rules:** `evm/docs/EVM_RULES.md`
 - **Examples:** `csr_gen/example/` and `evm/docs/evm_vkit/`
 
+## About Differential Audio Inc
+
+Differential Audio Inc develops advanced audio and signal processing solutions for professional and embedded applications. This verification framework was developed to support our internal FPGA/ASIC development workflows and is now available as open source.
+
 ## License
 
-See LICENSE file for details.
+MIT License - see LICENSE file for details.
+
+Copyright (c) 2026 Differential Audio Inc
 
 ## Contributing
 
-See CONTRIBUTING.md for contribution guidelines.
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with clear commit messages
+4. Submit a pull request
+
+See CONTRIBUTING.md for detailed guidelines.
 
 ## Support
 
-For issues or questions, please open an issue in the repository.
+For issues or questions:
+- Open an issue on [GitHub](https://github.com/DifferentialAudioInc/evm-sv/issues)
+- For commercial support or consulting, contact Differential Audio Inc
 
 ---
 
