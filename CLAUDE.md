@@ -181,7 +181,127 @@ Content starts here...
 
 ## 3. Project Architecture
 
-### 3.1 Class Hierarchy
+### 3.1 EVM Design Philosophy vs UVM
+
+**CRITICAL CONTEXT:** EVM is intentionally a **lightweight subset** of UVM, not a full replacement.
+
+#### 3.1.1 UVM vs EVM Strategy
+
+**UVM Approach:**
+- Comprehensive, enterprise-grade framework
+- ~50,000 lines of code, ~150 files
+- Steep learning curve (weeks)
+- Full feature set for all verification needs
+- Complex infrastructure (factory, config DB, TLM 2.0, RAL, callbacks)
+
+**EVM Approach:**
+- Essential subset for embedded FPGA/ASIC
+- ~5,000 lines of code, ~25 files  
+- Gentle learning curve (days)
+- 80% of practical utility with 20% of complexity
+- Unique features: Streaming model + Python integration
+
+#### 3.1.2 Feature Implementation Priority
+
+**✅ Priority 1: MUST HAVE (Implement)**
+These features are critical for reusable verification:
+
+1. **Factory Pattern**
+   - Type and instance overrides
+   - Dynamic component creation
+   - Enables reusable test libraries
+   - **Status:** ❌ Not implemented yet
+   - **Effort:** 3-4 days
+
+2. **Configuration Database**
+   - Type-safe configuration
+   - Hierarchical scope
+   - Wildcard matching
+   - **Status:** ❌ Not implemented yet
+   - **Effort:** 4-5 days
+
+3. **TLM Seq Item Port**
+   - Driver-sequencer connection
+   - Pull-mode transaction flow
+   - `get_next_item()`, `item_done()`
+   - **Status:** ❌ Not implemented yet
+   - **Effort:** 3-4 days
+
+**⚠️ Priority 2: NICE TO HAVE (Consider)**
+These enhance usability but aren't critical:
+
+1. **Printing Infrastructure** - Configurable object printing
+2. **Comparison Infrastructure** - Deep object comparison
+3. **Packing/Unpacking** - Serialization support
+4. **Complete Hierarchy Navigation** - `get_children()`, `lookup()`
+5. **Transaction Recording** - Waveform database integration
+
+**❌ Priority 3: SKIP (Keep Lightweight)**
+These add complexity without proportional value for embedded:
+
+1. **Full Register Abstraction Layer (RAL)** - Use CSR generator instead
+2. **Virtual Sequences** - Not needed for embedded scope
+3. **Callbacks Infrastructure** - Adds complexity
+4. **TLM 2.0** - Overkill for embedded
+5. **Field Macros** - Syntactic sugar, not essential
+6. **Phases Beyond 12** - Current set is sufficient
+
+#### 3.1.3 UVM to EVM Mapping
+
+| UVM Class | EVM Equivalent | Status | Notes |
+|-----------|----------------|--------|-------|
+| `uvm_object` | `evm_object` | ✅ Partial | Missing: print, copy, compare, pack |
+| `uvm_component` | `evm_component` | ✅ Good | Has phases, hierarchy; Missing: factory methods |
+| `uvm_agent` | `evm_agent` | ✅ Good | Missing: is_active configuration |
+| `uvm_driver` | `evm_driver` | ⚠️ Basic | Missing: seq_item_port |
+| `uvm_monitor` | `evm_monitor` | ✅ Good | Functional |
+| `uvm_sequencer` | `evm_sequencer` | ⚠️ Basic | Missing: seq_item_export |
+| `uvm_sequence` | `evm_sequence` | ✅ Good | Functional |
+| `uvm_sequence_item` | `evm_sequence_item` | ✅ Good | Functional |
+| `uvm_test` | `evm_base_test` | ✅ Good | Functional |
+| `uvm_env` | N/A | ❌ Skip | Not needed - keep flat |
+| `uvm_scoreboard` | `evm_scoreboard` | ✅ Good | Functional |
+| `uvm_factory` | N/A | ❌ Missing | **Priority 1** - implement |
+| `uvm_config_db` | N/A | ❌ Missing | **Priority 1** - implement |
+| TLM ports | N/A | ❌ Missing | **Priority 1** - implement seq_item_port only |
+| `uvm_reg_*` | CSR Generator | ✅ Alternative | Simpler tool-based approach |
+| N/A | `evm_stream_*` | ✅ Unique | **EVM-only** streaming model |
+
+#### 3.1.4 Refactoring Strategy
+
+**Phase 1: Foundation (Weeks 1-2)**
+- Implement `evm_factory` singleton
+- Add factory methods to `evm_object` and `evm_component`
+- Add type/instance override support
+- Update examples to use factory
+
+**Phase 2: Configuration (Weeks 3-4)**
+- Implement `evm_config_db#(T)` template
+- Add resource pool infrastructure
+- Integrate with `apply_config_settings()`
+- Update examples to use config_db
+
+**Phase 3: Connectivity (Week 5)**
+- Implement TLM port base classes
+- Add `seq_item_port` to `evm_driver`
+- Add `seq_item_export` to `evm_sequencer`
+- Update driver/sequencer examples
+
+**Phase 4: Polish (Week 6)**
+- Add missing hierarchy methods
+- Implement basic printing
+- Update all documentation
+- Comprehensive testing
+
+**DO NOT ADD:**
+- Multiple phase domains
+- Virtual sequences
+- Full TLM 2.0
+- Callbacks infrastructure
+- Field macros
+- Full RAL
+
+### 3.2 Class Hierarchy
 
 ```
 evm_object (base for all EVM objects)
@@ -1296,18 +1416,93 @@ python evm-sv/python/analyze_spectrum.py capture.txt --fs 48000
 
 ## 16. Key Takeaways for AI Assistants
 
-When working with the EVM project, remember:
+### 16.1 Critical Understanding
 
-1. **Always add copyright headers** to new files
-2. **Use two-tier package structure** (evm_pkg + evm_vkit_pkg)
-3. **Keep constructors minimal** - create objects in `connect_interfaces()`
-4. **Always call `super.method()`** first in overrides
-5. **Use EVM logging** functions, not `$display`
-6. **Raise/drop objections** in `main_phase()`
-7. **Let `evm_root` manage phases** - don't call manually
-8. **Choose correct model**: Transaction vs Streaming
-9. **Make agents generic** and configurable, not hardcoded
-10. **Document as you code** - explain WHY, not just WHAT
+**EVM is NOT a full UVM replacement** - it's a lightweight subset with unique features.
+
+**Design Goals:**
+- ✅ 80% of UVM's practical utility
+- ✅ 20% of UVM's complexity  
+- ✅ Unique streaming model + Python integration
+- ✅ Learning curve < 1 week (vs weeks for UVM)
+- ✅ Code size < 10K LOC (vs 50K for UVM)
+
+### 16.2 When Working with EVM
+
+**ALWAYS Remember:**
+
+1. **Keep it lightweight** - Don't over-engineer like UVM
+2. **Prioritize simplicity** - If it's complex, there's a simpler way
+3. **Add copyright headers** to all new files
+4. **Use two-tier packages** (evm_pkg + evm_vkit_pkg)
+5. **Keep constructors minimal** - create objects in `connect_interfaces()`
+6. **Always call `super.method()`** first in overrides
+7. **Use EVM logging**, not `$display`
+8. **Raise/drop objections** in `main_phase()`
+9. **Let `evm_root` manage phases** - don't call manually
+10. **Choose correct model**: Transaction vs Streaming
+11. **Make agents generic** and configurable, not hardcoded
+12. **Document WHY**, not just WHAT
+
+### 16.3 UVM Feature Decisions
+
+**✅ IMPLEMENT (Priority 1):**
+- Factory pattern - enables reusability
+- Config database - enables parameterization
+- TLM seq_item_port - standard driver-sequencer interface
+
+**⚠️ CONSIDER (Priority 2):**
+- Printing infrastructure - if users request
+- Comparison infrastructure - if users request
+- Complete hierarchy - if needed for debugging
+
+**❌ NEVER ADD (Keep Lightweight):**
+- Full RAL - we have CSR generator
+- Virtual sequences - not needed for embedded
+- Callbacks - adds complexity
+- TLM 2.0 - overkill
+- Additional phase domains - 12 phases sufficient
+- Field macros - syntactic sugar
+
+### 16.4 Refactoring Guidelines
+
+**When refactoring EVM:**
+
+1. **Check UVM comparison** in `docs/UVM_vs_EVM_ANALYSIS.md`
+2. **Identify feature gap** - is it Priority 1, 2, or 3?
+3. **If Priority 1** - implement minimal subset
+4. **If Priority 2** - wait for user request
+5. **If Priority 3** - don't implement
+6. **Keep it simple** - less code is better
+7. **Test with examples** - ensure backward compatibility
+8. **Update docs** - CLAUDE.md, UVM_vs_EVM_ANALYSIS.md
+
+### 16.5 Implementation Template
+
+When adding UVM features to EVM:
+
+```systemverilog
+// ✅ GOOD - Minimal, focused implementation
+class evm_factory;
+    static function evm_object create(string type_name);
+        // Simple factory lookup
+    endfunction
+    
+    static function void set_type_override(type base, type derived);
+        // Simple override registration
+    endfunction
+endclass
+
+// ❌ BAD - Over-engineered like UVM
+class evm_factory;
+    // Complex nested classes
+    // Multiple override mechanisms
+    // Extensive callback system
+    // 500+ lines of code
+endclass
+```
+
+**Guideline:** If UVM needs 500 lines, EVM should need 100 lines.
 
 ### When Adding New Features
 
@@ -1337,27 +1532,70 @@ When working with the EVM project, remember:
 
 ## Appendix A: Current Status (March 2026)
 
-### Completed (✅ 75%)
-- Core framework (evm_pkg)
-- Transaction model
-- Protocol agents (clock, reset, AXI-Lite, ADC, PCIe)
-- CSR generator
-- Python tools
-- Documentation (architecture, rules, guides)
+### Completed (✅ ~75%)
+- ✅ Core framework (evm_pkg) - Base classes functional
+- ✅ Transaction model - Sequences, items working
+- ✅ Streaming model - File I/O support (EVM unique)
+- ✅ Protocol agents - Clock, reset, AXI-Lite, ADC, PCIe
+- ✅ CSR generator - YAML to SystemVerilog/C
+- ✅ Python tools - Stimulus generation, spectrum analysis
+- ✅ Documentation - Architecture, UVM comparison, guides
+- ✅ Phase methodology - All 12 phases implemented
+- ✅ Simple counter example - Complete working example
 
-### In Progress (⚠️ 25%)
-- Streaming file I/O implementation
-- Sequencer integration with AXI-Lite
-- Additional test examples
-- Python workflow automation
+### Critical Gaps (❌ ~25%)
 
-### Planned (📋)
-- API documentation generation
-- Quick-start guide
-- Troubleshooting guide
-- Additional protocol agents
+**Priority 1: Essential for Reusability**
+- ❌ Factory pattern (`evm_factory`) - **10-13 days**
+- ❌ Configuration database (`evm_config_db`) - **4-5 days**
+- ❌ TLM seq_item_port - **3-4 days**
+- **Total:** ~3-4 weeks for production-ready EVM
 
-See NEXT_STEPS.md and EVM_ASSESSMENT.md for detailed roadmap.
+**Priority 2: Nice to Have**
+- ⚠️ Printing infrastructure - 2-3 days
+- ⚠️ Comparison infrastructure - 2 days
+- ⚠️ Complete hierarchy navigation - 1-2 days
+- ⚠️ Packing/unpacking - 2-3 days
+
+**Priority 3: Intentionally Skipped**
+- ❌ Full RAL (use CSR generator instead)
+- ❌ Virtual sequences (not needed)
+- ❌ Callback infrastructure (too complex)
+- ❌ TLM 2.0 (overkill for embedded)
+- ❌ Additional phase domains (12 phases sufficient)
+
+### Implementation Roadmap
+
+**2026-Q2: Core Infrastructure**
+1. Week 1-2: Factory pattern implementation
+2. Week 3-4: Configuration database implementation
+3. Week 5: TLM ports for driver-sequencer connection
+4. Week 6: Testing, examples, documentation
+
+**2026-Q3: Enhanced Features**
+1. Printing and comparison infrastructure
+2. Additional examples and tutorials
+3. Performance optimization
+4. Tool integration (Vivado, Questa, VCS)
+
+**2026-Q4: Ecosystem**
+1. Additional protocol agents
+2. Advanced examples
+3. Python workflow automation
+4. Community engagement
+
+### Success Metrics
+
+EVM will be successful when:
+- ✅ Learning curve < 1 week (vs weeks for UVM)
+- ✅ Code size < 10K LOC (vs 50K for UVM)
+- ✅ Compilation time < 5 seconds (vs minutes for UVM)
+- ✅ Factory enables reusable components
+- ✅ Config DB enables parameterized testbenches
+- ✅ Streaming model differentiates from UVM
+- ✅ Python integration remains simple
+
+See **`docs/UVM_vs_EVM_ANALYSIS.md`** for detailed comparison and **NEXT_STEPS.md** for detailed roadmap.
 
 ---
 
