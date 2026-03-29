@@ -22,6 +22,9 @@ package evm_pkg;
     `include "evm_object.sv"
     `include "evm_component.sv"
     
+    // Command-line processing
+    `include "evm_cmdline.sv"
+    
     // TLM infrastructure (before components that use it)
     `include "evm_tlm.sv"
     
@@ -50,6 +53,18 @@ package evm_pkg;
     
     // Quiescence counter (activity watchdog)
     `include "evm_qc.sv"
+    
+    // Scoreboard
+    `include "evm_scoreboard.sv"
+    
+    // Coverage infrastructure
+    `include "evm_coverage.sv"
+    
+    // Assertion infrastructure
+    `include "evm_assertions.sv"
+    
+    // Virtual sequences
+    `include "evm_virtual_sequence.sv"
     
     // Test infrastructure
     `include "evm_root.sv"

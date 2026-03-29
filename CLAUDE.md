@@ -1,7 +1,9 @@
 # CLAUDE.md - EVM Development Guide for AI
 
-**Last Updated:** 2026-03-29  
+**Last Updated:** 2026-03-29 02:12 AM  
 **Status:** Production Ready ✅
+
+**📋 LATEST SESSION CONTEXT:** See `SESSION_2026-03-29.md` for complete context from last development session
 
 ---
 
@@ -254,6 +256,7 @@ endclass
 
 ### Creating a New Test
 
+#### Option 1: Manual Objections (Traditional)
 ```systemverilog
 class my_test extends evm_base_test;
     my_env env;
@@ -292,14 +295,82 @@ class my_test extends evm_base_test;
 endclass
 ```
 
+#### Option 2: Automatic Completion with Quiescence Counter (Recommended)
+```systemverilog
+class my_test extends evm_base_test;
+    my_env env;
+    
+    function new(string name);
+        super.new(name);
+        
+        // Enable quiescence counter for automatic test completion
+        enable_quiescence_counter(200);  // 200 cycle threshold
+    endfunction
+    
+    virtual function void build_phase();
+        super.build_phase();  // Auto-creates QC
+        
+        evm_report_handler::enable_file_logging("test.log");
+        evm_report_handler::set_verbosity(EVM_MEDIUM);
+        
+        env = new("env", this);
+    endfunction
+    
+    virtual function void connect_phase();
+        super.connect_phase();
+        
+        // Pass QC to drivers/monitors for tick() calls
+        env.agent.driver.set_qc(qc);
+        env.agent.monitor.set_qc(qc);
+    endfunction
+    
+    virtual function void end_of_elaboration_phase();
+        super.end_of_elaboration_phase();
+        print_topology();
+    endfunction
+    
+    virtual task main_phase();
+        super.main_phase();
+        
+        // NO manual objections needed!
+        // QC auto-raises on first tick()
+        // QC auto-drops after 200 cycles of inactivity
+        
+        // Test stimulus
+        run_sequences();
+        
+        // Test ends automatically when idle
+    endtask
+    
+    virtual function void final_phase();
+        super.final_phase();
+        evm_report_handler::print_summary();
+    endfunction
+endclass
+
+// In driver/monitor:
+task drive_transaction();
+    // Drive signals...
+    if (qc != null) qc.tick();  // Signal activity
+endtask
+```
+
 ---
 
 ## 🔍 Common Issues & Solutions
 
 ### Issue: Test Never Ends
-**Solution:** Forgot to drop objection!
+**Solution 1:** Forgot to drop objection!
 ```systemverilog
 drop_objection("test");  // ← Add this!
+```
+
+**Solution 2:** Use Quiescence Counter (prevents this issue!)
+```systemverilog
+function new(string name);
+    super.new(name);
+    enable_quiescence_counter(200);  // Auto-manages objections
+endfunction
 ```
 
 ### Issue: Components Not Created
@@ -334,10 +405,11 @@ driver.seq_item_port.connect(
 ## 📚 Learning Path
 
 1. **Start:** Read `docs/QUICK_START.md`
-2. **Run:** `examples/minimal_test/`
-3. **Study:** `examples/full_phases_test/` (ALL 12 phases)
-4. **Understand:** `docs/EVM_MONITOR_SCOREBOARD_GUIDE.md`
-5. **Master:** Build your own testbench
+2. **Run:** `examples/minimal_test/` - Simplest test
+3. **Study:** `examples/qc_test/` - Automatic test completion with QC
+4. **Explore:** `examples/full_phases_test/` - ALL 12 phases
+5. **Understand:** `docs/EVM_MONITOR_SCOREBOARD_GUIDE.md`
+6. **Master:** Build your own testbench
 
 ---
 
@@ -364,6 +436,30 @@ driver.seq_item_port.connect(
 - [x] Virtual interface support
 - [x] Quiescence counter
 - [x] 3-phase reset
+- [x] Built-in QC support in evm_base_test
+
+---
+
+## 🎯 Quiescence Counter (QC) - Unique EVM Feature!
+
+**Problem:** Manual objection management is error-prone  
+**Solution:** Automatic activity detection and test completion
+
+### How It Works:
+1. Enable in test: `enable_quiescence_counter(200);`
+2. Components signal activity: `qc.tick();`
+3. QC auto-raises objection on first tick
+4. QC auto-drops objection after threshold cycles of inactivity
+5. Test ends gracefully!
+
+### Benefits:
+✅ No forgotten objections  
+✅ Automatic test completion  
+✅ Works with unpredictable transaction timing  
+✅ Built into `evm_base_test`  
+✅ Optional - use when needed
+
+**See:** `examples/qc_test/` for complete example
 
 ---
 
