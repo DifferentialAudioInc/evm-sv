@@ -21,6 +21,14 @@ typedef enum {
 class evm_scoreboard #(type T = int) extends evm_component;
     
     //==========================================================================
+    // Analysis Implementation - UVM Pattern
+    // Source: UVM uvm_analysis_imp - standard way to receive from monitor
+    // Usage: In environment connect_phase():
+    //        monitor.analysis_port.connect(scoreboard.analysis_imp.get_mailbox());
+    //==========================================================================
+    evm_analysis_imp#(T) analysis_imp;
+    
+    //==========================================================================
     // Configuration
     //==========================================================================
     evm_scoreboard_mode_e mode = EVM_SB_FIFO;
@@ -49,6 +57,9 @@ class evm_scoreboard #(type T = int) extends evm_component;
     //==========================================================================
     function new(string name = "evm_scoreboard", evm_component parent = null);
         super.new(name, parent);
+        
+        // Create analysis implementation with unbounded FIFO
+        analysis_imp = new({name, ".analysis_imp"}, 0);
     endfunction
     
     //==========================================================================
@@ -187,6 +198,25 @@ class evm_scoreboard #(type T = int) extends evm_component;
         
         log_info($sformatf("Checked %0d transactions", checked), EVM_MED);
     endfunction
+    
+    //==========================================================================
+    // Main Phase - Receive transactions from monitor
+    // Source: UVM pattern - scoreboard runs in main_phase to receive
+    //         transactions from monitor via analysis_imp
+    //==========================================================================
+    virtual task main_phase();
+        T txn;
+        
+        super.main_phase();
+        
+        fork
+            // Receive and process transactions from monitor
+            forever begin
+                analysis_imp.get(txn);
+                insert_actual(txn);
+            end
+        join_none
+    endtask
     
     //==========================================================================
     // Reset Methods - Clear State on Reset
