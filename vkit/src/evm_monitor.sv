@@ -13,7 +13,7 @@
 // Date: 2026-03-05
 //==============================================================================
 
-virtual class evm_monitor #(type VIF) extends evm_component;
+virtual class evm_monitor #(type VIF, type T = int) extends evm_component;
     
     //==========================================================================
     // Virtual Interface
@@ -21,10 +21,26 @@ virtual class evm_monitor #(type VIF) extends evm_component;
     VIF vif;
     
     //==========================================================================
+    // Analysis Port - Broadcast collected transactions
+    // Source: UVM pattern - all monitors have analysis_port
+    // Rationale: Monitors MUST broadcast to multiple components:
+    //            - Scoreboard needs transactions for checking
+    //            - Coverage needs transactions for functional coverage
+    //            - Checkers need transactions for protocol verification
+    //            This is THE standard way monitors communicate in verification
+    // Usage: In monitor: analysis_port.write(collected_transaction);
+    //        In env: scoreboard.analysis_imp.connect(monitor.analysis_port);
+    // UVM Equivalent: uvm_analysis_port#(transaction_type) analysis_port
+    //==========================================================================
+    evm_analysis_port#(T) analysis_port;
+    
+    //==========================================================================
     // Constructor
     //==========================================================================
     function new(string name = "evm_monitor", evm_component parent = null);
         super.new(name, parent);
+        // Create analysis port
+        analysis_port = new({name, ".analysis_port"}, this);
     endfunction
     
     //==========================================================================

@@ -16,10 +16,14 @@ package evm_pkg;
     
     // Include all EVM framework files in dependency order
     
-    // Core infrastructure
+    // Core infrastructure (report handler must come first)
+    `include "evm_report_handler.sv"
     `include "evm_log.sv"
     `include "evm_object.sv"
     `include "evm_component.sv"
+    
+    // TLM infrastructure (before components that use it)
+    `include "evm_tlm.sv"
     
     // Sequence infrastructure
     `include "evm_sequence_item.sv"
@@ -43,6 +47,9 @@ package evm_pkg;
     `include "evm_stream_driver.sv"
     `include "evm_stream_monitor.sv"
     `include "evm_stream_agent.sv"
+    
+    // Quiescence counter (activity watchdog)
+    `include "evm_qc.sv"
     
     // Test infrastructure
     `include "evm_root.sv"

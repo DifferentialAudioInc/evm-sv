@@ -20,6 +20,8 @@ virtual class evm_component extends evm_object;
     //==========================================================================
     protected evm_component m_parent;
     protected string        m_full_name;
+    protected evm_component m_children[$];
+    protected string        m_child_names[$];
     
     //==========================================================================
     // Constructor
@@ -27,6 +29,11 @@ virtual class evm_component extends evm_object;
     function new(string name = "evm_component", evm_component parent = null);
         super.new(name);
         m_parent = parent;
+        
+        // Register with parent
+        if (parent != null) begin
+            parent.add_child(name, this);
+        end
         
         // Build hierarchical full name
         if (parent == null) begin
@@ -62,6 +69,116 @@ virtual class evm_component extends evm_object;
     endfunction
     
     //==========================================================================
+    // Child Management Methods
+    // Source: Inspired by uvm_component child tracking and hierarchy methods
+    // Rationale: Essential for debugging and introspection:
+    //            - Cannot debug testbench without seeing component tree
+    //            - Need to query hierarchy for configuration
+    //            - print_topology() is invaluable for understanding structure
+    // UVM Equivalent: uvm_component::get_child(), get_num_children(), etc.
+    // Implementation: Uses dynamic arrays m_children[] and m_child_names[]
+    //                 Children auto-register with parent in constructor
+    //==========================================================================
+    
+    // Add child (called from child constructor)
+    protected function void add_child(string name, evm_component child);
+        m_child_names.push_back(name);
+        m_children.push_back(child);
+    endfunction
+    
+    // Get child by name
+    virtual function evm_component get_child(string name);
+        foreach (m_child_names[i]) begin
+            if (m_child_names[i] == name) begin
+                return m_children[i];
+            end
+        end
+        log_warning($sformatf("Child '%s' not found in %s", name, get_full_name()));
+        return null;
+    endfunction
+    
+    // Get number of children
+    virtual function int get_num_children();
+        return m_children.size();
+    endfunction
+    
+    // Get first child (iterator support)
+    virtual function int get_first_child(ref string name);
+        if (m_children.size() > 0) begin
+            name = m_child_names[0];
+            return 1;
+        end
+        return 0;
+    endfunction
+    
+    // Get next child (iterator support)  
+    virtual function int get_next_child(ref string name);
+        int found_current = 0;
+        foreach (m_child_names[i]) begin
+            if (found_current) begin
+                name = m_child_names[i];
+                return 1;
+            end
+            if (m_child_names[i] == name) begin
+                found_current = 1;
+            end
+        end
+        return 0;
+    endfunction
+    
+    // Lookup by hierarchical name
+    virtual function evm_component lookup(string name);
+        string names[$];
+        string token;
+        int start, dot_pos;
+        evm_component current = this;
+        
+        // Parse hierarchical name by splitting on '.'
+        start = 0;
+        while (start < name.len()) begin
+            dot_pos = start;
+            while (dot_pos < name.len() && name[dot_pos] != ".") begin
+                dot_pos++;
+            end
+            
+            token = name.substr(start, dot_pos-1);
+            if (token.len() > 0) begin
+                names.push_back(token);
+            end
+            
+            start = dot_pos + 1;
+        end
+        
+        // Traverse hierarchy
+        foreach (names[i]) begin
+            current = current.get_child(names[i]);
+            if (current == null) begin
+                return null;
+            end
+        end
+        
+        return current;
+    endfunction
+    
+    // Print topology
+    virtual function void print_topology(int indent = 0);
+        string spaces = "";
+        
+        // Create indentation
+        for (int i = 0; i < indent; i++) begin
+            spaces = {spaces, "  "};
+        end
+        
+        // Print this component
+        $display("%s%s (%s)", spaces, get_name(), get_type_name());
+        
+        // Print children recursively
+        foreach (m_children[i]) begin
+            m_children[i].print_topology(indent + 1);
+        end
+    endfunction
+    
+    //==========================================================================
     // Phase Methods (to be overridden by derived classes)
     //==========================================================================
     
@@ -86,8 +203,53 @@ virtual class evm_component extends evm_object;
     endfunction
     
     // Reset phase - apply and wait for reset
+    // Calls pre_reset, reset, post_reset in sequence
     virtual task reset_phase();
-        // Phase methods are stubs - override in derived classes
+        // Execute reset sequence
+        pre_reset();
+        reset();
+        post_reset();
+    endtask
+    
+    //==========================================================================
+    // Reset Sub-Phases (Virtual - Override in Derived Classes)
+    // Source: EVM-specific enhancement (not in UVM)
+    // Rationale: Embedded systems require robust reset handling:
+    //            - DUTs undergo multiple resets during testing
+    //            - Must clear queues/scoreboards on reset
+    //            - Three phases provide clean separation of concerns
+    // Design: pre_reset()  -> Prepare (stop activities, save state)
+    //         reset()      -> Clear (delete queues, reset counters)
+    //         post_reset() -> Reinitialize (prepare for operation)
+    // UVM Note: UVM only has single reset_phase(), EVM splits into 3 for clarity
+    //==========================================================================
+    
+    // Pre-reset: Prepare for reset
+    // - Stop ongoing activities
+    // - Save state if needed
+    // - Prepare queues/FIFOs for clearing
+    virtual task pre_reset();
+        // Default: no action
+        // Override in derived classes to add pre-reset functionality
+    endtask
+    
+    // Reset: Perform actual reset operations
+    // - Clear all queues
+    // - Delete pending transactions
+    // - Reset scoreboards/predictors
+    // - Clear all internal state
+    virtual task reset();
+        // Default: no action
+        // Override in derived classes to clear state
+    endtask
+    
+    // Post-reset: Cleanup after reset
+    // - Reinitialize data structures
+    // - Reset counters/statistics
+    // - Prepare for normal operation
+    virtual task post_reset();
+        // Default: no action
+        // Override in derived classes to reinitialize
     endtask
     
     // Configure phase - configure DUT after reset

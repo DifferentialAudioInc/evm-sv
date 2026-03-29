@@ -13,7 +13,7 @@
 // Date: 2026-03-05
 //==============================================================================
 
-virtual class evm_driver #(type VIF) extends evm_component;
+virtual class evm_driver #(type VIF, type REQ = int, type RSP = REQ) extends evm_component;
     
     //==========================================================================
     // Virtual Interface
@@ -21,10 +21,30 @@ virtual class evm_driver #(type VIF) extends evm_component;
     VIF vif;
     
     //==========================================================================
+    // Sequence Item Port - Pull items from sequencer
+    // Source: UVM pattern - all drivers have seq_item_port
+    // Rationale: Drivers MUST get stimulus from sequencer:
+    //            - Enables sequence-based testbenches
+    //            - Decouples stimulus generation from driving
+    //            - Allows layered/virtual sequences
+    //            - Standard protocol: get_next_item() -> drive() -> item_done()
+    // Usage: In main_phase():
+    //        forever begin
+    //          seq_item_port.get_next_item(req);
+    //          drive_transaction(req);
+    //          seq_item_port.item_done();
+    //        end
+    // UVM Equivalent: uvm_seq_item_pull_port#(REQ,RSP) seq_item_port
+    //==========================================================================
+    evm_seq_item_pull_port#(REQ, RSP) seq_item_port;
+    
+    //==========================================================================
     // Constructor
     //==========================================================================
     function new(string name = "evm_driver", evm_component parent = null);
         super.new(name, parent);
+        // Create sequence item port
+        seq_item_port = new({name, ".seq_item_port"}, this);
     endfunction
     
     //==========================================================================

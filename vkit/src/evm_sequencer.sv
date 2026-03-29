@@ -12,10 +12,24 @@
 // Date: 2026-03-06
 //==============================================================================
 
-class evm_sequencer extends evm_component;
+class evm_sequencer #(type REQ = evm_sequence_item, type RSP = REQ) extends evm_component;
     
     //==========================================================================
-    // Mailbox for Item Passing
+    // Sequence Item Export - Provides items to driver
+    // Source: UVM pattern - sequencers have seq_item_export
+    // Rationale: Sequencer is the "middleman" between sequences and driver:
+    //            - Sequences generate stimulus items
+    //            - Sequencer queues items in FIFO
+    //            - Driver pulls items via seq_item_port
+    //            - Export provides the connection point
+    // Connection: Auto-connected in agent.connect_phase():
+    //            driver.seq_item_port.connect(sequencer.seq_item_export.get_fifos())
+    // UVM Equivalent: uvm_seq_item_pull_export#(REQ,RSP) seq_item_export
+    //==========================================================================
+    evm_seq_item_pull_export#(REQ, RSP) seq_item_export;
+    
+    //==========================================================================
+    // Legacy Mailbox for Item Passing (backward compatibility)
     //==========================================================================
     mailbox #(evm_sequence_item) item_mbx;
     
@@ -30,6 +44,9 @@ class evm_sequencer extends evm_component;
     //==========================================================================
     function new(string name = "evm_sequencer", evm_component parent = null);
         super.new(name, parent);
+        // Create export
+        seq_item_export = new({name, ".seq_item_export"}, this);
+        // Legacy mailbox for backward compatibility
         item_mbx = new();
         items_sent = 0;
         items_completed = 0;

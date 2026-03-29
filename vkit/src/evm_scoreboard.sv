@@ -189,6 +189,42 @@ class evm_scoreboard #(type T = int) extends evm_component;
     endfunction
     
     //==========================================================================
+    // Reset Methods - Clear State on Reset
+    //==========================================================================
+    
+    // Pre-reset: Save any needed state before clearing
+    virtual task pre_reset();
+        super.pre_reset();
+        log_info("Scoreboard pre-reset: preparing for reset", EVM_HIGH);
+        // Could save state here if needed for analysis
+    endtask
+    
+    // Reset: Clear all queues and state
+    virtual task reset();
+        super.reset();
+        log_info("Scoreboard reset: clearing all queues and statistics", EVM_MEDIUM);
+        
+        // Clear all queues
+        expected_queue.delete();
+        actual_queue.delete();
+        
+        // Reset statistics
+        match_count = 0;
+        mismatch_count = 0;
+        expected_count = 0;
+        actual_count = 0;
+        orphan_expected = 0;
+        orphan_actual = 0;
+    endtask
+    
+    // Post-reset: Reinitialize after reset
+    virtual task post_reset();
+        super.post_reset();
+        log_info("Scoreboard post-reset: ready for operation", EVM_HIGH);
+        // Queues are empty and ready for new data
+    endtask
+    
+    //==========================================================================
     // Final Phase - Report Results
     //==========================================================================
     virtual function void final_phase();
