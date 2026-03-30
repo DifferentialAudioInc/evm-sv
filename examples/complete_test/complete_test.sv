@@ -51,7 +51,7 @@ package complete_test_pkg;
     endclass
     
     //==========================================================================
-    // Monitor
+    // Monitor - Uses run_phase for continuous monitoring
     //==========================================================================
     class my_monitor extends evm_monitor#(virtual my_if, my_txn);
         
@@ -59,32 +59,57 @@ package complete_test_pkg;
             super.new(name, parent);
         endfunction
         
-        virtual task main_phase();
+        // Moved from main_phase to run_phase for continuous operation
+        virtual task run_phase();
             my_txn txn;
             
-            super.main_phase();
+            super.run_phase();  // Starts reset event monitoring
             
             // Wait for reset
             wait(vif.reset_n == 1);
             log_info("Monitor active after reset", EVM_MEDIUM);
             
-            forever begin
-                // Collect transaction
-                txn = new("monitored_txn");
-                
-                // Wait for valid transaction
-                @(posedge vif.clk);
-                if (vif.valid && vif.ready) begin
-                    txn.addr = vif.addr;
-                    txn.data = vif.data;
-                    txn.write = vif.write;
-                    
-                    // Broadcast to all subscribers
-                    analysis_port.write(txn);
-                    
-                    log_info($sformatf("Monitored: %s", txn.convert2string()), EVM_HIGH);
+            fork
+                begin
+                    // Continuous monitoring loop
+                    forever begin
+                        // Check if in reset
+                        if (!in_reset) begin
+                            // Collect transaction
+                            txn = new("monitored_txn");
+                            
+                            // Wait for valid transaction
+                            @(posedge vif.clk);
+                            if (vif.valid && vif.ready) begin
+                                txn.addr = vif.addr;
+                                txn.data = vif.data;
+                                txn.write = vif.write;
+                                
+                                // Broadcast to all subscribers
+                                analysis_port.write(txn);
+                                
+                                log_info($sformatf("Monitored: %s", txn.convert2string()), EVM_HIGH);
+                            end
+                        end
+                        else begin
+                            // Paused during reset - wait for deassertion
+                            @(reset_deasserted);
+                        end
+                    end
                 end
-            end
+            join_none
+        endtask
+        
+        // Handle reset assertion - flush any partial transactions
+        virtual task on_reset_assert();
+            super.on_reset_assert();
+            log_info("Monitor: Pausing collection due to reset", EVM_HIGH);
+        endtask
+        
+        // Handle reset deassertion - resume monitoring
+        virtual task on_reset_deassert();
+            super.on_reset_deassert();
+            log_info("Monitor: Resuming collection after reset", EVM_HIGH);
         endtask
         
         virtual function string get_type_name();

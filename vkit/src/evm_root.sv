@@ -252,6 +252,7 @@ class evm_root extends evm_component;
     
     //==========================================================================
     // Main Phase Runner - Executes all phases in order on given test
+    // Note: run_phase() executes in parallel with sequential runtime phases
     //==========================================================================
     task run_all_phases_with_test(evm_component test);
         // Function phases (pre-simulation)
@@ -268,29 +269,42 @@ class evm_root extends evm_component;
         execute_start_of_simulation_phase();
         
         // Task phases (runtime)
+        // Fork run_phase to execute in parallel with sequential phases
         fork
-            test.reset_phase();
-        join_none
-        execute_reset_phase();
-        wait fork;
-        
-        fork
-            test.configure_phase();
-        join_none
-        execute_configure_phase();
-        wait fork;
-        
-        fork
-            test.main_phase();
-        join_none
-        execute_main_phase();
-        wait fork;
-        
-        fork
-            test.shutdown_phase();
-        join_none
-        execute_shutdown_phase();
-        wait fork;
+            begin
+                // Continuous parallel execution (monitors/scoreboards)
+                log_info(">>> Starting RUN phase (parallel)", EVM_HIGH);
+                test.run_phase();
+                log_info("<<< RUN phase complete", EVM_HIGH);
+            end
+            
+            begin
+                // Sequential runtime phases
+                fork
+                    test.reset_phase();
+                join_none
+                execute_reset_phase();
+                wait fork;
+                
+                fork
+                    test.configure_phase();
+                join_none
+                execute_configure_phase();
+                wait fork;
+                
+                fork
+                    test.main_phase();
+                join_none
+                execute_main_phase();
+                wait fork;
+                
+                fork
+                    test.shutdown_phase();
+                join_none
+                execute_shutdown_phase();
+                wait fork;
+            end
+        join
         
         // Function phases (post-simulation)
         test.extract_phase();

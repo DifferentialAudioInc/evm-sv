@@ -23,6 +23,11 @@ virtual class evm_component extends evm_object;
     protected evm_component m_children[$];
     protected string        m_child_names[$];
     
+    // Reset event infrastructure for mid-simulation reset support
+    protected event reset_asserted;    // Triggered when reset starts
+    protected event reset_deasserted;  // Triggered when reset ends
+    protected bit   in_reset;          // Status flag
+    
     //==========================================================================
     // Constructor
     //==========================================================================
@@ -257,9 +262,30 @@ virtual class evm_component extends evm_object;
         // Phase methods are stubs - override in derived classes
     endtask
     
-    // Main phase - primary test activity (renamed from run_phase)
+    // Main phase - primary test activity (test stimulus)
     virtual task main_phase();
         // Phase methods are stubs - override in derived classes
+    endtask
+    
+    //==========================================================================
+    // Run Phase - Continuous Parallel Execution
+    // Source: Based on UVM run_phase, critical EVM enhancement
+    // Rationale: Monitors/scoreboards need continuous execution:
+    //            - run_phase() executes in parallel with reset/configure/main/shutdown
+    //            - Monitors collect data continuously during all test phases
+    //            - Scoreboards check continuously during all test phases
+    //            - Prevents data loss during phase transitions
+    //            - Essential for mid-simulation reset support
+    // Usage: Monitors and Scoreboards override run_phase() instead of main_phase()
+    //        Tests continue to use main_phase() for test stimulus
+    //==========================================================================
+    
+    // Run phase - continuous parallel execution (monitors/scoreboards)
+    virtual task run_phase();
+        // Phase methods are stubs - override in derived classes
+        // Monitors: Override to continuously collect transactions
+        // Scoreboards: Override to continuously check transactions
+        // Drivers: May use for continuous driving (optional)
     endtask
     
     // Shutdown phase - graceful shutdown
@@ -286,6 +312,70 @@ virtual class evm_component extends evm_object;
     virtual function void final_phase();
         // Phase methods are stubs - override in derived classes
     endfunction
+    
+    //==========================================================================
+    // Mid-Simulation Reset Support
+    // Source: EVM-specific enhancement for embedded systems
+    // Rationale: Embedded DUTs frequently require mid-simulation resets:
+    //            - Configuration changes may require reset
+    //            - Error recovery testing requires reset
+    //            - Components must gracefully handle reset events
+    // Usage: Derived classes override on_reset_assert() and on_reset_deassert()
+    //        to handle reset events. Base class propagates to children.
+    //        User must call assert_reset() / deassert_reset() from test.
+    //==========================================================================
+    
+    // Assert reset - call from test or reset agent
+    // This method should be called by user code (test or reset agent)
+    // when a mid-simulation reset occurs
+    virtual function void assert_reset();
+        in_reset = 1;
+        ->reset_asserted;
+        log_info("Reset asserted", EVM_HIGH);
+        
+        // Propagate to all children
+        foreach(m_children[i]) begin
+            m_children[i].assert_reset();
+        end
+    endfunction
+    
+    // Deassert reset - call from test or reset agent
+    // This method should be called by user code (test or reset agent)
+    // when reset is released
+    virtual function void deassert_reset();
+        ->reset_deasserted;
+        in_reset = 0;
+        log_info("Reset deasserted", EVM_HIGH);
+        
+        // Propagate to all children
+        foreach(m_children[i]) begin
+            m_children[i].deassert_reset();
+        end
+    endfunction
+    
+    // Override in derived classes to handle reset assertion
+    // Called when reset is asserted (either initial or mid-simulation)
+    // Typical actions:
+    // - Monitors: Pause collection, flush partial transactions
+    // - Scoreboards: Flush all queues, clear expected/actual data
+    // - Drivers: Stop driving, clear sequence queues
+    // - Sequencers: Flush request/response FIFOs
+    virtual task on_reset_assert();
+        // Default: no action
+        // Override in derived classes to handle reset assertion
+    endtask
+    
+    // Override in derived classes to handle reset deassertion
+    // Called when reset is released
+    // Typical actions:
+    // - Monitors: Resume collection
+    // - Scoreboards: Ready for new transactions
+    // - Drivers: Ready to drive again
+    // - Sequencers: Ready for new sequences
+    virtual task on_reset_deassert();
+        // Default: no action
+        // Override in derived classes to handle reset deassertion
+    endtask
     
     //==========================================================================
     // Objection Convenience Methods

@@ -76,9 +76,53 @@ All critical features have been implemented as of March 29, 2026. The framework 
 
 ---
 
+## ⚠️ CRITICAL ARCHITECTURAL IMPROVEMENT NEEDED
+
+### Run Phase Implementation (HIGH PRIORITY)
+
+**Issue:** Current implementation has monitors/scoreboards in main_phase, which stops when transitioning to shutdown_phase. This breaks continuous data collection and makes mid-simulation resets very difficult.
+
+**Solution Required:**
+1. **Add parallel run_phase** that executes concurrently with reset/configure/main/shutdown phases
+   - Monitors execute in run_phase (continuous data collection)
+   - Scoreboards execute in run_phase (continuous checking)
+   - Sequencers can optionally use run_phase
+
+2. **Mid-simulation reset support**
+   - Add reset event/signal that components can monitor
+   - Sequencers must gracefully shut down on mid-sim reset
+   - Scoreboards must flush/clear on mid-sim reset
+   - Monitors should pause/resume on reset
+   - Need clean recovery mechanism after reset completes
+
+**Implementation Priority:** 🔴 **CRITICAL** - This affects correctness of verification
+
+**Estimated Effort:** 3-4 days
+
+**Files to Modify:**
+- `vkit/src/evm_component.sv` - Add run_phase execution in parallel
+- `vkit/src/evm_root.sv` - Orchestrate parallel phase execution
+- `vkit/src/evm_monitor.sv` - Move to run_phase
+- `vkit/src/evm_scoreboard.sv` - Move to run_phase
+- `vkit/src/evm_driver.sv` - Add reset event handling
+- `vkit/src/evm_sequencer.sv` - Add reset event handling
+- All examples - Update to use run_phase pattern
+- Documentation - Update phasing guides
+
+**Benefits:**
+- ✅ Monitors continue collecting during phase transitions
+- ✅ Scoreboards continue checking during phase transitions
+- ✅ Mid-sim resets properly handled
+- ✅ Aligns with UVM run_phase architecture
+- ✅ More robust for complex test scenarios
+
+**See Appendix C below for detailed implementation plan.**
+
+---
+
 ## 🎯 Next Steps: Optional Enhancements
 
-**Note:** These are **OPTIONAL** enhancements for specific use cases. The core EVM framework is complete and ready for production use.
+**Note:** These are **OPTIONAL** enhancements for specific use cases. After implementing the critical run_phase improvement above, the core EVM framework will be complete and production-ready.
 
 ### Phase 1: Protocol Agents (Optional)
 
@@ -482,9 +526,351 @@ The framework provides:
 | 🔵 FUTURE | Long-term ideas |
 | ❌ SKIP | Intentionally not implementing |
 
-**Current Version:** 1.0.0 (Production Ready)  
+**Current Version:** 1.0.0 (Production Ready - Run Phase Enhancement Needed)  
 **Last Updated:** March 30, 2026  
 **Next Review:** June 2026 (or when community needs arise)
+
+---
+
+## Appendix C: Run Phase & Mid-Sim Reset Implementation Plan
+
+### Problem Statement
+
+**Current Issue:**
+- Monitors and scoreboards execute in `main_phase()`
+- When test transitions from `main_phase` → `shutdown_phase`, monitors stop
+- This creates a race condition where final transactions may be lost
+- Mid-simulation resets are not properly handled
+- Sequencers cannot gracefully shut down during reset
+
+**Impact:** 🔴 **CRITICAL** - Affects correctness of verification
+
+---
+
+### Solution Architecture
+
+#### 1. Add Parallel Run Phase
+
+**Concept:** `run_phase()` executes in parallel with reset/configure/main/shutdown phases
+
+```systemverilog
+// Current (WRONG):
+reset_phase()     →  configure_phase()  →  main_phase()  →  shutdown_phase()
+                                            ↑
+                                      monitors/scoreboards
+                                      (stop here!)
+
+// Proposed (CORRECT):
+reset_phase()     →  configure_phase()  →  main_phase()  →  shutdown_phase()
+                  ↓                      ↓               ↓                   ↓
+              run_phase() - continuous execution
+                  ↑
+            monitors/scoreboards/sequencers run here
+```
+
+#### 2. Mid-Simulation Reset Support
+
+**Add reset event infrastructure:**
+```systemverilog
+class evm_component;
+    event reset_asserted;   // Triggered when reset starts
+    event reset_deasserted; // Triggered when reset ends
+    bit in_reset;          // Status flag
+    
+    // New virtual tasks
+    virtual task on_reset_assert();
+        // Override to handle reset assertion
+    endtask
+    
+    virtual task on_reset_deassert();
+        // Override to handle reset deassertion  
+    endtask
+endclass
+```
+
+---
+
+### Implementation Details
+
+#### File 1: `vkit/src/evm_component.sv`
+
+**Changes Required:**
+
+1. Add run_phase execution:
+```systemverilog
+task run_phase_execution();
+    fork
+        begin
+            // Execute user's run_phase
+            run_phase();
+        end
+        begin
+            // Monitor for reset events
+            forever begin
+                @(reset_asserted);
+                in_reset = 1;
+                on_reset_assert();
+                @(reset_deasserted);
+                in_reset = 0;
+                on_reset_deassert();
+            end
+        end
+    join_none
+endtask
+```
+
+2. Add reset event handling:
+```systemverilog
+function void assert_reset();
+    in_reset = 1;
+    ->reset_asserted;
+    // Propagate to children
+    foreach(children[i])
+        children[i].assert_reset();
+endfunction
+
+function void deassert_reset();
+    ->reset_deasserted;
+    in_reset = 0;
+    // Propagate to children
+    foreach(children[i])
+        children[i].deassert_reset();
+endfunction
+```
+
+#### File 2: `vkit/src/evm_root.sv`
+
+**Changes Required:**
+
+1. Modify phase execution to fork run_phase:
+```systemverilog
+task execute_run_time_phases();
+    fork
+        begin
+            // Sequential phases
+            reset_phase();
+            configure_phase();
+            main_phase();
+            shutdown_phase();
+        end
+        begin
+            // Parallel run_phase
+            run_phase();
+        end
+    join
+endtask
+```
+
+2. Add global reset control:
+```systemverilog
+function void global_reset_assert();
+    if (top_component != null)
+        top_component.assert_reset();
+endfunction
+
+function void global_reset_deassert();
+    if (top_component != null)
+        top_component.deassert_reset();
+endfunction
+```
+
+#### File 3: `vkit/src/evm_monitor.sv`
+
+**Changes Required:**
+
+1. Move monitoring to run_phase:
+```systemverilog
+virtual task run_phase();
+    super.run_phase();
+    
+    fork
+        begin
+            // Continuous monitoring
+            forever begin
+                @(posedge vif.clk);
+                if (!in_reset) begin
+                    // Collect transactions
+                    collect_transaction();
+                end
+                else begin
+                    // Paused during reset
+                    @(reset_deasserted);
+                end
+            end
+        end
+    join_none
+endtask
+```
+
+2. Add reset handling:
+```systemverilog
+virtual task on_reset_assert();
+    // Flush any partial transactions
+    evm_report_handler::report(EVM_INFO, get_full_name(), 
+        "Monitor paused due to reset");
+endtask
+
+virtual task on_reset_deassert();
+    // Resume monitoring
+    evm_report_handler::report(EVM_INFO, get_full_name(), 
+        "Monitor resumed after reset");
+endtask
+```
+
+#### File 4: `vkit/src/evm_scoreboard.sv`
+
+**Changes Required:**
+
+1. Move checking to run_phase:
+```systemverilog
+virtual task run_phase();
+    super.run_phase();
+    
+    fork
+        begin
+            // Continuous checking
+            forever begin
+                if (!in_reset) begin
+                    // Process transactions from mailbox
+                    check_transaction();
+                end
+                else begin
+                    // Wait for reset to complete
+                    @(reset_deasserted);
+                end
+            end
+        end
+    join_none
+endtask
+```
+
+2. Add reset handling:
+```systemverilog
+virtual task on_reset_assert();
+    // Flush all pending comparisons
+    expected_q.delete();
+    actual_q.delete();
+    evm_report_handler::report(EVM_INFO, get_full_name(), 
+        "Scoreboard flushed due to reset");
+endtask
+
+virtual task on_reset_deassert();
+    // Ready for new transactions
+    evm_report_handler::report(EVM_INFO, get_full_name(), 
+        "Scoreboard ready after reset");
+endtask
+```
+
+#### File 5: `vkit/src/evm_driver.sv`
+
+**Changes Required:**
+
+1. Add reset monitoring in run_phase:
+```systemverilog
+virtual task run_phase();
+    super.run_phase();
+    
+    fork
+        begin
+            // Monitor for mid-sim reset
+            forever begin
+                @(reset_asserted);
+                on_reset_assert();
+                @(reset_deasserted);
+                on_reset_deassert();
+            end
+        end
+    join_none
+endtask
+```
+
+2. Modify driving to check reset:
+```systemverilog
+virtual task drive();
+    while (!in_reset) begin
+        req_fifo.get(req);
+        if (!in_reset) begin  // Double-check before driving
+            drive_transaction(req);
+        end
+    end
+endtask
+```
+
+#### File 6: `vkit/src/evm_sequencer.sv`
+
+**Changes Required:**
+
+1. Add graceful shutdown on reset:
+```systemverilog
+virtual task on_reset_assert();
+    // Stop accepting new sequences
+    // Flush pending requests
+    req_fifo.flush();
+    rsp_fifo.flush();
+    evm_report_handler::report(EVM_INFO, get_full_name(), 
+        "Sequencer flushed due to reset");
+endtask
+
+virtual task on_reset_deassert();
+    // Ready to accept sequences again
+    evm_report_handler::report(EVM_INFO, get_full_name(), 
+        "Sequencer ready after reset");
+endtask
+```
+
+---
+
+### Migration Path
+
+**Phase 1: Add Infrastructure (1 day)**
+- Add run_phase to evm_component
+- Add reset events and handling
+- Update evm_root phase execution
+
+**Phase 2: Update Base Classes (1 day)**
+- Move monitor to run_phase
+- Move scoreboard to run_phase
+- Add reset handling to driver/sequencer
+
+**Phase 3: Update Examples (1 day)**
+- Update all examples to use run_phase
+- Add mid-sim reset example
+- Update documentation
+
+**Phase 4: Testing & Validation (1 day)**
+- Test phase transitions
+- Test mid-sim reset
+- Verify no regressions
+
+**Total Effort:** 3-4 days
+
+---
+
+### Benefits
+
+✅ **Correctness:** Monitors never miss transactions  
+✅ **Robustness:** Proper mid-sim reset handling  
+✅ **UVM Alignment:** Matches UVM run_phase architecture  
+✅ **Flexibility:** Clean separation of test stimulus vs. monitoring  
+✅ **Debugging:** Easier to debug phase-related issues
+
+---
+
+### Backward Compatibility
+
+**Option 1: Breaking Change (Recommended)**
+- Require all monitors/scoreboards to move to run_phase
+- Clear migration guide
+- Update all examples
+
+**Option 2: Dual Support**
+- Support both main_phase and run_phase temporarily
+- Deprecation warning if using main_phase
+- Remove old way in version 2.0
+
+---
+
+*This implementation is CRITICAL for production use with complex testbenches and mid-simulation resets.*
 
 ---
 

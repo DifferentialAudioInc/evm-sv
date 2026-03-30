@@ -200,26 +200,73 @@ class evm_scoreboard #(type T = int) extends evm_component;
     endfunction
     
     //==========================================================================
-    // Main Phase - Receive transactions from monitor
-    // Source: UVM pattern - scoreboard runs in main_phase to receive
-    //         transactions from monitor via analysis_imp
+    // Run Phase - Continuous checking (moved from main_phase)
+    // Source: Moved from main_phase to run_phase for continuous operation
+    // Rationale: Scoreboards must run continuously during all test phases
+    //            - Check transactions during reset, configure, main, shutdown
+    //            - Prevents data loss during phase transitions
+    //            - Essential for mid-sim reset support
     //==========================================================================
-    virtual task main_phase();
+    virtual task run_phase();
         T txn;
         
-        super.main_phase();
+        super.run_phase();
+        
+        log_info("Scoreboard run_phase started - continuous checking active", EVM_LOW);
         
         fork
-            // Receive and process transactions from monitor
-            forever begin
-                analysis_imp.get(txn);
-                insert_actual(txn);
+            begin
+                // Monitor for reset events
+                forever begin
+                    @(reset_asserted);
+                    on_reset_assert();
+                    @(reset_deasserted);
+                    on_reset_deassert();
+                end
+            end
+            begin
+                // Receive and process transactions from monitor
+                forever begin
+                    if (!in_reset) begin
+                        analysis_imp.get(txn);
+                        insert_actual(txn);
+                    end
+                    else begin
+                        // Wait for reset to complete
+                        @(reset_deasserted);
+                    end
+                end
             end
         join_none
     endtask
     
     //==========================================================================
-    // Reset Methods - Clear State on Reset
+    // Reset Event Handlers - Handle mid-simulation reset
+    //==========================================================================
+    
+    // Handle reset assertion - flush all pending comparisons
+    virtual task on_reset_assert();
+        super.on_reset_assert();
+        log_info("Scoreboard: Flushing queues due to reset assertion", EVM_MEDIUM);
+        
+        // Flush all pending comparisons
+        expected_queue.delete();
+        actual_queue.delete();
+        
+        // Note: Don't reset match/mismatch counters - keep for statistics
+        log_info($sformatf("Scoreboard flushed: %0d expected, %0d actual cleared", 
+                          expected_queue.size(), actual_queue.size()), EVM_HIGH);
+    endtask
+    
+    // Handle reset deassertion - ready for new transactions
+    virtual task on_reset_deassert();
+        super.on_reset_deassert();
+        log_info("Scoreboard: Ready for new transactions after reset", EVM_MEDIUM);
+        // Queues are empty and ready for new data
+    endtask
+    
+    //==========================================================================
+    // Reset Phase Methods - Initial reset handling
     //==========================================================================
     
     // Pre-reset: Save any needed state before clearing
@@ -229,7 +276,7 @@ class evm_scoreboard #(type T = int) extends evm_component;
         // Could save state here if needed for analysis
     endtask
     
-    // Reset: Clear all queues and state
+    // Reset: Clear all queues and state  
     virtual task reset();
         super.reset();
         log_info("Scoreboard reset: clearing all queues and statistics", EVM_MEDIUM);

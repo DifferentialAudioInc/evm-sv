@@ -28,11 +28,11 @@ class evm_rst_monitor extends evm_monitor#(virtual evm_rst_if);
     endfunction
     
     //==========================================================================
-    // Main Phase - Monitor reset signals
+    // Run Phase - Continuous reset monitoring
     //==========================================================================
-    virtual task main_phase();
-        super.main_phase();
-        log_info("Reset monitor started", EVM_LOW);
+    virtual task run_phase();
+        super.run_phase();
+        log_info("Reset monitor started - continuous monitoring", EVM_LOW);
         
         fork
             monitor_sys_reset();
@@ -43,6 +43,7 @@ class evm_rst_monitor extends evm_monitor#(virtual evm_rst_if);
     
     //==========================================================================
     // Reset Monitoring Tasks
+    // Note: Can propagate reset events to parent hierarchy
     //==========================================================================
     task monitor_sys_reset();
         bit prev_state = 1;
@@ -51,8 +52,14 @@ class evm_rst_monitor extends evm_monitor#(virtual evm_rst_if);
             if (vif.sys_rst_n != prev_state) begin
                 if (vif.sys_rst_n == 0) begin
                     log_info("System reset ASSERTED", EVM_MED);
+                    // Optional: Propagate to parent if configured
+                    // if (cfg != null && cfg.propagate_reset_events && m_parent != null)
+                    //     m_parent.assert_reset();
                 end else begin
                     log_info("System reset RELEASED", EVM_MED);
+                    // Optional: Propagate to parent if configured
+                    // if (cfg != null && cfg.propagate_reset_events && m_parent != null)
+                    //     m_parent.deassert_reset();
                 end
                 prev_state = vif.sys_rst_n;
             end

@@ -28,11 +28,11 @@ class evm_clk_monitor extends evm_monitor#(virtual evm_clk_if);
     endfunction
     
     //==========================================================================
-    // Main Phase - Monitor clock signals
+    // Run Phase - Continuous clock monitoring
     //==========================================================================
-    virtual task main_phase();
-        super.main_phase();
-        log_info("Clock monitor started", EVM_LOW);
+    virtual task run_phase();
+        super.run_phase();
+        log_info("Clock monitor started - continuous monitoring", EVM_LOW);
         
         fork
             monitor_clock();
