@@ -12,6 +12,12 @@ This folder contains analysis, comparison, and planning documents that were crea
 
 ## Contents
 
+### Development Sessions
+
+| Document | Purpose |
+|----------|---------|
+| **SESSION_2026-03-29.md** | March 29, 2026 session - Final features implemented (Vivado, cmdline, coverage, assertions, virtual sequences) |
+
 ### UVM Comparison Documents
 
 | Document | Purpose |

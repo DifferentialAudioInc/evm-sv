@@ -48,6 +48,13 @@ TLM communication and checking:
 - Automatic scoreboard checking
 - 3 checking modes (FIFO, Associative, Unordered)
 
+### [UVM_FEATURES_NOT_IMPLEMENTED.md](UVM_FEATURES_NOT_IMPLEMENTED.md)
+Explicit list of UVM features NOT in EVM (and why):
+- 20 major UVM features intentionally excluded
+- Rationale for each decision
+- EVM alternatives for each
+- When to use UVM vs EVM
+
 ---
 
 ## 🎯 Recommended Reading Order
@@ -103,7 +110,7 @@ These are kept for reference but not needed for daily use.
 
 ## 🎉 Summary
 
-**5 Essential Guides** - Everything you need to build production testbenches  
+**6 Essential Guides** - Everything you need to build production testbenches  
 **4 Working Examples** - Copy and adapt for your projects  
 **Clean and Focused** - No clutter, just practical guides  
 
