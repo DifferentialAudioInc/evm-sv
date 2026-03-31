@@ -66,7 +66,8 @@ virtual class evm_virtual_sequence extends evm_sequence;
     //==========================================================================
     virtual task start(evm_virtual_sequencer sequencer);
         if (sequencer == null) begin
-            $display("ERROR: Virtual sequencer is null");
+            evm_report_handler::report(EVM_ERROR, "evm_virtual_sequence", 
+                "Virtual sequencer is null");
             return;
         end
         
@@ -91,7 +92,8 @@ virtual class evm_virtual_sequence extends evm_sequence;
     //==========================================================================
     virtual task body();
         // Override in derived class
-        $display("WARNING: Virtual sequence body() not implemented");
+        evm_report_handler::report(EVM_WARNING, "evm_virtual_sequence", 
+            "Virtual sequence body() not implemented - override in derived class");
     endtask
     
 endclass
@@ -145,7 +147,8 @@ endclass
 // Start multiple sequences in parallel
 task automatic evm_start_parallel_sequences(evm_sequence sequences[$], evm_sequencer sequencers[$]);
     if (sequences.size() != sequencers.size()) begin
-        $display("ERROR: Sequence and sequencer count mismatch");
+        evm_report_handler::report(EVM_ERROR, "evm_start_parallel_sequences", 
+            "Sequence and sequencer count mismatch");
         return;
     end
     
@@ -160,7 +163,8 @@ endtask
 // Start sequences sequentially
 task automatic evm_start_sequential_sequences(evm_sequence sequences[$], evm_sequencer sequencers[$]);
     if (sequences.size() != sequencers.size()) begin
-        $display("ERROR: Sequence and sequencer count mismatch");
+        evm_report_handler::report(EVM_ERROR, "evm_start_sequential_sequences", 
+            "Sequence and sequencer count mismatch");
         return;
     end
     

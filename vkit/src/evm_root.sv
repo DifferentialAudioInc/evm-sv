@@ -61,7 +61,8 @@ class evm_root extends evm_component;
     // Initialize root with test name
     static function evm_root init(string name);
         if (m_inst != null) begin
-            $display("WARNING: evm_root already initialized, reinitializing with %s", name);
+            evm_report_handler::report(EVM_WARNING, "evm_root", 
+                $sformatf("evm_root already initialized, reinitializing with %s", name));
         end
         m_inst = new(name);
         return m_inst;
