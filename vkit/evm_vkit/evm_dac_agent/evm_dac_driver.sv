@@ -8,7 +8,7 @@
 // Class: evm_dac_driver
 // Description: DAC driver stub (DAC agent is passive-only)
 //              This driver is not used but required for agent structure
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

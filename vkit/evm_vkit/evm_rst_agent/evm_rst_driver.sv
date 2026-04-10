@@ -8,7 +8,7 @@
 // Class: evm_rst_driver
 // Description: Reset control driver for EVM
 //              Manages multiple reset domains
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

@@ -8,7 +8,7 @@
 // Interface: evm_pcie_if
 // Description: PCIe interface for PCIe Bus Functional Model
 //              Simplified interface for basic PCIe transaction modeling
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 //==============================================================================
 

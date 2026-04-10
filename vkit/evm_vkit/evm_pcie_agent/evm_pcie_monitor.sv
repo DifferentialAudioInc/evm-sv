@@ -8,7 +8,7 @@
 // Class: evm_pcie_monitor
 // Description: PCIe monitor for EVM
 //              Monitors PCIe transactions
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 //==============================================================================
 

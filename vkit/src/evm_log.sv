@@ -9,7 +9,7 @@
 // Description: Base logging class for all EVM classes
 //              Provides logging infrastructure for entire EVM framework
 //              Now integrates with evm_report_handler for enhanced reporting
-// Author: Engineering Team  
+// Author: Eric Dyer  
 // Date: 2026-03-05
 // Updated: 2026-03-28 - Integrated with evm_report_handler
 //==============================================================================

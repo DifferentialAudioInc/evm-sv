@@ -8,7 +8,7 @@
 // Class: evm_stream_cfg
 // Description: Configuration for streaming agents
 //              Controls stimulus generation and capture
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

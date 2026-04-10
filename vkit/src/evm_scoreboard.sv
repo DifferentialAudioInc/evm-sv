@@ -8,7 +8,7 @@
 // Class: evm_scoreboard
 // Description: Scoreboard for comparing expected vs actual transactions
 //              Supports FIFO and associative matching
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

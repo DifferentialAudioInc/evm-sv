@@ -8,7 +8,7 @@
 // Class: evm_reg_field
 // Description: Lightweight register field model (similar to UVM RAL)
 //              Represents a field within a register with access policies
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

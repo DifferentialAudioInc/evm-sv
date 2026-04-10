@@ -1,10 +1,14 @@
 # CLAUDE.md - EVM Development Guide for AI
 
-**Last Updated:** 2026-03-30 05:32 PM  
+**Last Updated:** 2026-04-09  
 **Status:** Production Ready ✅
 
-**📋 NEXT STEPS:** See `NEXT_STEPS.md` for optional enhancements roadmap  
-**📋 UVM COMPARISON:** See `docs/UVM_FEATURES_NOT_IMPLEMENTED.md` for explicit list of UVM features NOT in EVM
+**📋 ARCHITECTURE:** See `docs/ARCHITECTURE.md` — phases, run_phase, mid-sim reset, TLM  
+**📋 NEW AGENTS:** See `docs/AGENTS.md` — AXI-Lite (updated) + AXI4 Full (new)  
+**📋 REGISTER MODEL:** See `docs/REGISTER_MODEL.md` — RAL, reg_map, predictor  
+**📋 TEST INFRA:** See `docs/TEST_INFRASTRUCTURE.md` — env, test_registry, sequence_library  
+**📋 UML DIAGRAMS:** See `vkit/docs/uml/` — 6 Mermaid diagrams covering all classes  
+**📋 UVM COMPARISON:** See `docs/UVM_FEATURES_NOT_IMPLEMENTED.md` — excluded features with rationale
 
 ---
 
@@ -55,6 +59,21 @@
 | - Quiescence counter | ✅ | vkit/src/evm_qc.sv |
 | - 3-phase reset | ✅ | Built into phasing |
 | - Direct VIF | ✅ | No config DB needed |
+| **Environment & Test Infrastructure** | ✅ Complete | |
+| - evm_env | ✅ | vkit/src/evm_env.sv |
+| - evm_test_registry + EVM_REGISTER_TEST | ✅ | vkit/src/evm_test_registry.sv |
+| - evm_sequence_library + EVM_REGISTER_SEQUENCE | ✅ | vkit/src/evm_sequence_library.sv |
+| - run_test_by_name() (+EVM_TESTNAME) | ✅ | vkit/src/evm_root.sv |
+| **Register Model (RAL)** | ✅ Complete | |
+| - evm_reg_map | ✅ | vkit/src/evm_reg_map.sv |
+| - evm_reg_predictor (parameterized base) | ✅ | vkit/src/evm_reg_predictor.sv |
+| - evm_axi_lite_write/read_predictor | ✅ | vkit/evm_vkit/evm_axi_lite_agent/ |
+| **Architecture Improvements** | ✅ Complete | |
+| - run_phase + mid-sim reset events | ✅ | vkit/src/evm_component.sv |
+| **Protocol Agents** | ✅ Complete | |
+| - evm_axi4_full_master_agent | ✅ | vkit/evm_vkit/evm_axi4_full_agent/ |
+| - evm_axi_lite_monitor (7 analysis ports) | ✅ | vkit/evm_vkit/evm_axi_lite_agent/ |
+| - AXI-Lite + AXI4 Full transaction types | ✅ | *_txn.sv in each agent dir |
 
 ---
 
@@ -62,30 +81,68 @@
 
 ```
 evm-sv/
-├── vkit/src/              # Core EVM library
-│   ├── evm_pkg.sv        # Main package
-│   ├── evm_object.sv     # Base object class
-│   ├── evm_component.sv  # Base component with phasing
-│   ├── evm_root.sv       # Singleton root
-│   ├── evm_tlm.sv        # TLM infrastructure
-│   ├── evm_monitor.sv    # Monitor base class
-│   ├── evm_driver.sv     # Driver base class
-│   ├── evm_sequencer.sv  # Sequencer
-│   ├── evm_agent.sv      # Agent base class
-│   ├── evm_scoreboard.sv # Scoreboard with auto analysis_imp
-│   ├── evm_sequence.sv   # Sequence infrastructure
-│   ├── evm_report_handler.sv # Logging/reporting
-│   └── evm_qc.sv         # Quiescence counter
-├── examples/
-│   ├── minimal_test/     # Simplest test
-│   ├── full_phases_test/ # Complete example with all phases
-│   └── complete_test/    # Monitor→Scoreboard example
-└── docs/
-    ├── QUICK_START.md    # Start here!
-    ├── EVM_PHASING_GUIDE.md
-    ├── EVM_VIRTUAL_INTERFACE_GUIDE.md
-    ├── EVM_MONITOR_SCOREBOARD_GUIDE.md
-    └── EVM_LOGGING_COMPLETE_GUIDE.md
+├── CLAUDE.md              # ← AI session start reference (this file)
+├── NEXT_STEPS.md          # Roadmap and status
+├── README.md              # Public project overview
+│
+├── vkit/src/              # Core EVM library (evm_pkg)
+│   ├── evm_pkg.sv         # Package (includes all below in order)
+│   ├── evm_object.sv      # Base object
+│   ├── evm_component.sv   # 12-phase + run_phase + reset events
+│   ├── evm_tlm.sv         # TLM 1.0 (analysis_port, seq_item_port)
+│   ├── evm_monitor.sv     # Monitor base (run_phase, reset-aware)
+│   ├── evm_driver.sv      # Driver base (run_phase reset monitor)
+│   ├── evm_sequencer.sv   # Sequencer (with reset flush)
+│   ├── evm_agent.sv       # Agent base
+│   ├── evm_scoreboard.sv  # Scoreboard (run_phase, 3 modes)
+│   ├── evm_reg*.sv        # RAL: field, reg, block, map, predictor
+│   ├── evm_sequence*.sv   # Sequences, CSR sequence, virtual sequence
+│   ├── evm_sequence_library.sv  # Named sequence registry
+│   ├── evm_env.sv         # Environment base class
+│   ├── evm_root.sv        # Singleton + run_test_by_name()
+│   ├── evm_base_test.sv   # Test base + QC
+│   ├── evm_test_registry.sv     # +EVM_TESTNAME registry
+│   ├── evm_qc.sv          # Quiescence counter
+│   ├── evm_memory_model.sv      # 64-bit sparse memory
+│   └── evm_report_handler.sv    # Logging
+│
+├── vkit/evm_vkit/         # Protocol agents (evm_vkit_pkg)
+│   ├── evm_axi_lite_agent/      # AXI-Lite (7 analysis ports)
+│   │   ├── evm_axi_lite_txn.sv          # 7 transaction types
+│   │   ├── evm_axi_lite_monitor.sv      # 7 analysis ports
+│   │   ├── evm_axi_lite_driver.sv
+│   │   ├── evm_axi_lite_agent.sv        # +optional sequencer
+│   │   ├── evm_axi_lite_reg_predictor.sv  # Concrete RAL predictors
+│   │   └── evm_axi_lite_if.sv
+│   ├── evm_axi4_full_agent/     # AXI4 Full burst agent
+│   │   ├── evm_axi4_full_if.sv
+│   │   ├── evm_axi4_full_cfg.sv
+│   │   ├── evm_axi4_full_txn.sv         # 7 transaction types
+│   │   ├── evm_axi4_full_driver.sv      # write/read burst
+│   │   ├── evm_axi4_full_monitor.sv     # 7 analysis ports
+│   │   └── evm_axi4_full_agent.sv
+│   └── (clk, rst, adc, dac, gpio, pcie agents)
+│
+├── docs/                  # User documentation
+│   ├── QUICK_START.md     # Start here for new users
+│   ├── ARCHITECTURE.md    # Framework design
+│   ├── AGENTS.md          # All protocol agents
+│   ├── REGISTER_MODEL.md  # RAL + predictor
+│   ├── TEST_INFRASTRUCTURE.md   # env/registry/library
+│   ├── EVM_LOGGING_COMPLETE_GUIDE.md
+│   ├── EVM_MONITOR_SCOREBOARD_GUIDE.md
+│   └── UVM_FEATURES_NOT_IMPLEMENTED.md
+│
+├── vkit/docs/uml/         # Mermaid UML diagrams
+│   ├── 01_core_framework.md
+│   ├── 02_register_model.md
+│   ├── 03_utilities.md
+│   ├── 04_agents_axi_lite.md
+│   ├── 05_agents_axi4_full.md
+│   └── 06_tlm_sequences.md
+│
+└── csr_gen/               # CSR Generator (YAML → RTL + RAL)
+    └── gen_csr.py
 ```
 
 ---
@@ -406,11 +463,12 @@ driver.seq_item_port.connect(
 ## 📚 Learning Path
 
 1. **Start:** Read `docs/QUICK_START.md`
-2. **Run:** `examples/minimal_test/` - Simplest test
-3. **Study:** `examples/qc_test/` - Automatic test completion with QC
-4. **Explore:** `examples/full_phases_test/` - ALL 12 phases
-5. **Understand:** `docs/EVM_MONITOR_SCOREBOARD_GUIDE.md`
-6. **Master:** Build your own testbench
+2. **Architecture:** Read `docs/ARCHITECTURE.md` — phases, run_phase, reset
+3. **Agents:** Read `docs/AGENTS.md` — AXI-Lite, AXI4 Full, custom agent template
+4. **RAL:** Read `docs/REGISTER_MODEL.md` — register model and predictor
+5. **Tests:** Read `docs/TEST_INFRASTRUCTURE.md` — env, test registry, sequence library
+6. **Understand:** `docs/EVM_MONITOR_SCOREBOARD_GUIDE.md`
+7. **Master:** Build the NIC example (see `NEXT_STEPS.md`)
 
 ---
 
@@ -460,7 +518,7 @@ driver.seq_item_port.connect(
 ✅ Built into `evm_base_test`  
 ✅ Optional - use when needed
 
-**See:** `examples/qc_test/` for complete example
+**See:** `docs/TEST_INFRASTRUCTURE.md` for complete test patterns
 
 ---
 

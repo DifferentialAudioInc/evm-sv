@@ -9,7 +9,7 @@
 // Description: Root singleton for Embedded Verification Methodology (EVM)
 //              Central phase controller with objection mechanism
 //              All tests extend from this root
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 //==============================================================================
 
@@ -242,13 +242,55 @@ class evm_root extends evm_component;
     endfunction
     
     //==========================================================================
-    // Test Runner - Called from tb_top to run a test
+    // Test Runner - Called from tb_top to run a test (direct object)
     //==========================================================================
     task run_test(evm_component test);
         log_info($sformatf("EVM: Running Test: %s", test.get_full_name()));
         
         // Run all phases with the test
         run_all_phases_with_test(test);
+    endtask
+    
+    //==========================================================================
+    // Test Runner by Name - Reads +EVM_TESTNAME plusarg and creates test
+    // Usage in tb_top:
+    //   initial begin
+    //       evm_root::get().run_test_by_name();
+    //   end
+    // Simulation:
+    //   +EVM_TESTNAME=my_test_name
+    //   +EVM_LIST_TESTS  (print all registered tests and exit)
+    //==========================================================================
+    task run_test_by_name();
+        string testname;
+        evm_base_test test;
+        
+        // Handle +EVM_LIST_TESTS: print registry and exit
+        if ($test$plusargs("EVM_LIST_TESTS")) begin
+            evm_test_registry::list_tests();
+            return;
+        end
+        
+        // Read test name from plusarg
+        if (!$value$plusargs("EVM_TESTNAME=%s", testname)) begin
+            log_error("EVM: +EVM_TESTNAME not specified.");
+            log_error("EVM: Use +EVM_TESTNAME=<test_name> or +EVM_LIST_TESTS");
+            $fatal(1, "EVM: No test specified");
+            return;
+        end
+        
+        // Create test from registry
+        test = evm_test_registry::create_test(testname);
+        
+        if (test == null) begin
+            log_error($sformatf("EVM: Failed to create test '%s'", testname));
+            log_error("EVM: Ensure `EVM_REGISTER_TEST(%s) is in your test file", testname);
+            $fatal(1, $sformatf("EVM: Unknown test '%s'", testname));
+            return;
+        end
+        
+        log_info($sformatf("EVM: Running test '%s' (from registry)", testname));
+        run_test(test);
     endtask
     
     //==========================================================================

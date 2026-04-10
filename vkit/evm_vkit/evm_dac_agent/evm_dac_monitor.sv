@@ -8,7 +8,7 @@
 // Class: evm_dac_monitor
 // Description: DAC passive monitor - captures DAC output data
 //              Writes captured data to file for Python analysis
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

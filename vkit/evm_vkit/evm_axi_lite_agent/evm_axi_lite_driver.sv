@@ -8,7 +8,7 @@
 // Class: evm_axi_lite_master_driver
 // Description: AXI4-Lite Master Driver for EVM
 //              Protocol-compliant CSR register access driver
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 //==============================================================================
 

@@ -7,7 +7,7 @@
 //==============================================================================
 // Class: evm_rst_cfg
 // Description: Lightweight configuration class for reset agent
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

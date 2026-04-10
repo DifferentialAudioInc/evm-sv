@@ -1,877 +1,161 @@
-# EVM Framework - Next Steps & Roadmap
+# EVM Next Steps & Roadmap
 
-**Last Updated:** 2026-03-30  
-**Status:** ✅ PRODUCTION READY - 100% Complete  
-**Version:** 1.0.0
+**Author:** Eric Dyer (Differential Audio Inc.)  
+**Last Updated:** 2026-04-09  
+---
+
+## ✅ What's Complete
+
+### Core Framework
+
+- [x] `evm_object` — base object with logging
+- [x] `evm_component` — 12-phase lifecycle + **run_phase** + mid-simulation reset events
+- [x] `evm_root` — singleton phase controller + `run_test_by_name()` (via `+EVM_TESTNAME`)
+- [x] `evm_base_test` — test base with optional quiescence counter (QC)
+- [x] `evm_env` — environment base class (auto topology print)
+- [x] `evm_test_registry` + `EVM_REGISTER_TEST` macro — test selection without recompile
+- [x] TLM 1.0 — `evm_analysis_port`, `evm_analysis_imp`, `evm_seq_item_pull_port/export`
+- [x] `evm_monitor` — `run_phase()` based, reset-aware
+- [x] `evm_driver` — `run_phase()` reset monitor, `main_phase()` for stimulus
+- [x] `evm_sequencer` — with reset flush (mailbox + TLM FIFOs)
+- [x] `evm_agent` — configurable active/passive
+- [x] `evm_scoreboard` — `run_phase()` based, 3 matching modes, reset-aware
+- [x] `evm_qc` — quiescence counter (unique EVM feature)
+
+### Register Model (RAL)
+
+- [x] `evm_reg_field` — 9 access types
+- [x] `evm_reg` — read/write/mirror/predict
+- [x] `evm_reg_block` — with agent association
+- [x] `evm_reg_map` — address map for multiple blocks
+- [x] `evm_reg_predictor` — parameterized base + AXI-Lite concrete classes
+- [x] CSR Generator (`gen_csr.py`) — YAML → RTL + C headers + RAL model
+
+### Sequences & Libraries
+
+- [x] `evm_sequence_item`, `evm_sequence`, `evm_csr_item`, `evm_csr_sequence`
+- [x] `evm_virtual_sequence` — multi-sequencer coordination
+- [x] `evm_sequence_library` + `EVM_REGISTER_SEQUENCE` macro
+
+### Protocol Agents (VKit)
+
+- [x] `evm_clk_agent` — clock generation
+- [x] `evm_rst_agent` — reset sequencing
+- [x] **`evm_axi_lite_master_agent`** — 7 analysis ports + optional sequencer
+- [x] **`evm_axi4_full_master_agent`** — AXI4 Full burst agent (write/read burst API)
+- [x] `evm_adc_agent` — streaming ADC stimulus
+- [x] `evm_dac_agent` — streaming DAC capture + Python analysis
+- [x] `evm_gpio_agent` — digital I/O
+- [x] `evm_pcie_agent` — PCIe BFM
+
+### Infrastructure
+
+- [x] `evm_memory_model` — 64-bit sparse memory + file I/O
+- [x] `evm_coverage` — coverage wrapper
+- [x] `evm_assertions` — assertion checker
+- [x] Command-line plusargs: `+EVM_TESTNAME`, `+EVM_SEQ`, `+verbosity`, `+seed`, `+EVM_TIMEOUT`
+- [x] Multi-simulator support (VCS, Questa, Xcelium, Vivado)
+
+### Documentation
+
+- [x] `docs/ARCHITECTURE.md` — complete framework architecture
+- [x] `docs/AGENTS.md` — all agent documentation
+- [x] `docs/REGISTER_MODEL.md` — complete RAL reference
+- [x] `docs/TEST_INFRASTRUCTURE.md` — env, test registry, sequence library
+- [x] 6 updated UML files (Mermaid) — all new classes included
+- [x] `CLAUDE.md` — AI development guide
 
 ---
 
-## 🎉 Current Status: COMPLETE
+## 🎯 Next Priority: NIC Example Project
 
-**EVM is production-ready for embedded systems verification!**
+**Goal:** Build a complete TX NIC DUT and verification environment using EVM.
 
-All critical features have been implemented as of March 29, 2026. The framework is:
-- ✅ **Fully functional** - All 12 phases working
-- ✅ **Well documented** - 5+ comprehensive guides
-- ✅ **Battle-tested** - Multiple working examples
-- ✅ **Vivado-ready** - Complete TCL automation
-- ✅ **Multi-simulator** - VCS/Questa/Xcelium/Vivado support
+This is the main next task. See `next.txt` for the full specification.
 
----
-
-## 📊 What's Complete (100%)
-
-### Core Framework ✅
-- [x] evm_object - Base object class
-- [x] evm_component - Component with phasing
-- [x] evm_root - Singleton root with objections
-- [x] 12-phase methodology
-- [x] Objection mechanism
-- [x] Hierarchical naming
-- [x] Component lifecycle management
-
-### TLM Infrastructure ✅
-- [x] analysis_port / analysis_imp
-- [x] seq_item_pull_port / seq_item_pull_export
-- [x] Mailbox-based communication
-- [x] FIFO-based transaction passing
-
-### Components ✅
-- [x] evm_monitor - Base monitor class
-- [x] evm_driver - Base driver class  
-- [x] evm_sequencer - Sequence management
-- [x] evm_agent - Configurable agent
-- [x] evm_scoreboard - 3 comparison modes (FIFO/Assoc/Unordered)
-- [x] evm_sequence / evm_sequence_item - Transaction infrastructure
-
-### Advanced Features ✅
-- [x] evm_report_handler - File logging, verbosity levels
-- [x] evm_qc - Quiescence counter (auto objection management)
-- [x] evm_base_test - Test base class with QC support
-- [x] evm_cmdline - Command-line plusargs (+verbosity, +seed, etc.)
-- [x] evm_coverage - Coverage framework wrapper
-- [x] evm_assertions - Assertion macros and checker
-- [x] evm_virtual_sequence - Multi-agent coordination
-
-### Documentation ✅
-- [x] CLAUDE.md - AI development guide
-- [x] docs/QUICK_START.md
-- [x] docs/EVM_PHASING_GUIDE.md
-- [x] docs/EVM_LOGGING_COMPLETE_GUIDE.md
-- [x] docs/EVM_MONITOR_SCOREBOARD_GUIDE.md
-- [x] docs/EVM_VIRTUAL_INTERFACE_GUIDE.md
-- [x] Clean archive structure for historical docs
-
-### Examples ✅
-- [x] examples/minimal_test - Simplest example
-- [x] examples/complete_test - Monitor→Scoreboard
-- [x] examples/qc_test - Quiescence counter usage
-- [x] examples/full_phases_test - ALL 12 phases + Vivado
-
-### Build System ✅
-- [x] evm_files.f - Filelist for all simulators
-- [x] compile_check.sh - Multi-simulator validation
-- [x] vivado_setup.tcl - Automated Vivado project creation
-- [x] vivado_run_sim.tcl - One-command simulation
-
----
-
-## ⚠️ CRITICAL ARCHITECTURAL IMPROVEMENT NEEDED
-
-### Run Phase Implementation (HIGH PRIORITY)
-
-**Issue:** Current implementation has monitors/scoreboards in main_phase, which stops when transitioning to shutdown_phase. This breaks continuous data collection and makes mid-simulation resets very difficult.
-
-**Solution Required:**
-1. **Add parallel run_phase** that executes concurrently with reset/configure/main/shutdown phases
-   - Monitors execute in run_phase (continuous data collection)
-   - Scoreboards execute in run_phase (continuous checking)
-   - Sequencers can optionally use run_phase
-
-2. **Mid-simulation reset support**
-   - Add reset event/signal that components can monitor
-   - Sequencers must gracefully shut down on mid-sim reset
-   - Scoreboards must flush/clear on mid-sim reset
-   - Monitors should pause/resume on reset
-   - Need clean recovery mechanism after reset completes
-
-**Implementation Priority:** 🔴 **CRITICAL** - This affects correctness of verification
-
-**Estimated Effort:** 3-4 days
-
-**Files to Modify:**
-- `vkit/src/evm_component.sv` - Add run_phase execution in parallel
-- `vkit/src/evm_root.sv` - Orchestrate parallel phase execution
-- `vkit/src/evm_monitor.sv` - Move to run_phase
-- `vkit/src/evm_scoreboard.sv` - Move to run_phase
-- `vkit/src/evm_driver.sv` - Add reset event handling
-- `vkit/src/evm_sequencer.sv` - Add reset event handling
-- All examples - Update to use run_phase pattern
-- Documentation - Update phasing guides
-
-**Benefits:**
-- ✅ Monitors continue collecting during phase transitions
-- ✅ Scoreboards continue checking during phase transitions
-- ✅ Mid-sim resets properly handled
-- ✅ Aligns with UVM run_phase architecture
-- ✅ More robust for complex test scenarios
-
-**See Appendix C below for detailed implementation plan.**
-
----
-
-## 🎯 Next Steps: Optional Enhancements
-
-**Note:** These are **OPTIONAL** enhancements for specific use cases. After implementing the critical run_phase improvement above, the core EVM framework will be complete and production-ready.
-
-### Phase 1: Protocol Agents (Optional)
-
-These can be added as community contributions or when specific projects need them:
-
-#### 1.1 AXI4-Lite Agent (3-4 days)
-**Use Case:** Register/memory-mapped I/O verification  
-**Priority:** Medium
-
-**Tasks:**
-- [ ] Create axi4_lite_if.sv interface
-- [ ] Implement axi4_lite_driver (write/read tasks)
-- [ ] Implement axi4_lite_monitor (capture transactions)
-- [ ] Create axi4_lite_agent wrapper
-- [ ] Add example test
-- [ ] Document usage
-
-**New Files:**
+### NIC DUT Architecture
 ```
-vkit/src/agents/axi4_lite/
-├── axi4_lite_if.sv
-├── axi4_lite_transaction.sv
-├── axi4_lite_driver.sv
-├── axi4_lite_monitor.sv
-└── axi4_lite_agent.sv
+AXI-Lite Slave (doorbell CSRs)
+  → doorbell: address + size
+  → AXI4 Full Master engine
+      → fetch packet from host memory
+      → store in internal FIFO (store-and-forward)
+      → transmit on streaming output (SOP/DATA/EOP + backpressure)
 ```
 
-#### 1.2 AXI4-Stream Agent (3-4 days)
-**Use Case:** Streaming data verification  
-**Priority:** Medium
-
-**Tasks:**
-- [ ] Create axi4_stream_if.sv interface
-- [ ] Implement master/slave drivers
-- [ ] Implement monitor with backpressure
-- [ ] Add TKEEP, TLAST, TID support
-- [ ] Add example test
-- [ ] Document usage
-
-#### 1.3 SPI Agent (2-3 days)
-**Use Case:** SPI peripheral verification  
-**Priority:** Low-Medium
-
-**Tasks:**
-- [ ] Create spi_if.sv (master/slave modes)
-- [ ] Implement SPI driver (CPOL/CPHA modes)
-- [ ] Implement SPI monitor
-- [ ] Add configuration (clock phase, polarity)
-- [ ] Add example test
-
-#### 1.4 I2C Agent (3-4 days)
-**Use Case:** I2C bus verification  
-**Priority:** Low-Medium
-
-**Tasks:**
-- [ ] Create i2c_if.sv
-- [ ] Implement I2C master driver
-- [ ] Implement I2C slave driver
-- [ ] Handle START/STOP/ACK/NACK
-- [ ] Add multi-master support
-- [ ] Add example test
-
-#### 1.5 UART Agent (2 days)
-**Use Case:** Serial communication verification  
-**Priority:** Low
-
-**Tasks:**
-- [ ] Create uart_if.sv
-- [ ] Implement UART driver (configurable baud)
-- [ ] Implement UART monitor
-- [ ] Add parity checking
-- [ ] Add example test
+### NIC Verification Plan
+- [ ] Design CSRs → YAML → `gen_csr.py` → RTL + RAL
+- [ ] Implement DUT in RTL (SV)
+- [ ] Create `tb_top.sv` with interfaces + clock/reset
+- [ ] Create `nic_env.sv` with AXI-Lite + AXI4 Full + stream agents
+- [ ] Create `nic_base_test.sv`
+- [ ] Create test suite: single_pkt, backpressure, stress
+- [ ] Register all tests with `EVM_REGISTER_TEST`
 
 ---
 
-### Phase 2: Additional Examples (1-2 weeks)
+## 🟢 Optional Enhancements (Community / Future)
 
-#### 2.1 Multi-Agent Example (2 days)
-**Show:** Multiple agents working together
+### Protocol Agents
 
-**Tasks:**
-- [ ] Create example with 2+ agents
-- [ ] Demonstrate virtual sequences
-- [ ] Show cross-agent synchronization
-- [ ] Document patterns
+These agents are listed in NEXT_STEPS but are not yet implemented. 
+Add when needed by a specific project.
 
-**New File:** `examples/multi_agent_test/`
+- [ ] **AXI4-Stream Agent** — TVALID/TREADY/TDATA/TKEEP/TLAST
+  - Ideal for the NIC streaming output side
+  - SOP/EOP framing can be built on top
+- [ ] **SPI Agent** — CPOL/CPHA modes
+- [ ] **I2C Agent** — master/slave, START/STOP/ACK
+- [ ] **UART Agent** — configurable baud rate, parity
 
-#### 2.2 Coverage Example (1 day)
-**Show:** Functional coverage integration
+### Verification Infrastructure
 
-**Tasks:**
-- [ ] Create transaction covergroup example
-- [ ] Show coverage collector usage
-- [ ] Demonstrate coverage reporting
-- [ ] Document best practices
+- [ ] **AXI4 Full Slave agent** — needed to model host memory for DMA
+  - Currently: use `evm_memory_model` with manual response
+  - Better: a proper AXI4 slave BFM that auto-responds
+- [ ] **Better test template generator** — Python script that scaffolds a new project
+- [ ] **CI/CD** — GitHub Actions workflow for compile + lint
+- [ ] **Regression framework** — run all `EVM_REGISTER_TEST` tests, collect pass/fail
 
-**New File:** `examples/coverage_test/`
+### RAL Enhancements
 
-#### 2.3 Assertion Example (1 day)
-**Show:** Using EVM assertion infrastructure
-
-**Tasks:**
-- [ ] Create example with protocol assertions
-- [ ] Show assertion checker usage
-- [ ] Demonstrate statistics reporting
-- [ ] Document patterns
-
-**New File:** `examples/assertion_test/`
-
-#### 2.4 Real DUT Example (3-4 days)
-**Show:** Complete realistic verification environment
-
-**Tasks:**
-- [ ] Choose realistic DUT (FIFO, filter, etc.)
-- [ ] Build complete testbench
-- [ ] Multiple test scenarios
-- [ ] Coverage and assertions
-- [ ] Comprehensive documentation
-
-**New File:** `examples/realistic_dut/`
+- [ ] **Backdoor access** — `$deposit()` / force/release for zero-time register inspection
+- [ ] **Register test sequences** — hw_reset_seq, bit_bash_seq, access_seq (standard IP qualification)
+- [ ] **Address map validation** — overlap detection, coverage of all addresses
 
 ---
 
-### Phase 3: Developer Experience (1-2 weeks)
+## ❌ Intentionally NOT Implemented
 
-#### 3.1 Better Build Scripts (2 days)
-**Goal:** Simplified workflow
+These UVM features are deliberately excluded. See `docs/UVM_FEATURES_NOT_IMPLEMENTED.md` for full rationale.
 
-**Tasks:**
-- [ ] Create unified Makefile
-  - `make compile` - Compile library
-  - `make sim TEST=minimal_test` - Run test
-  - `make clean` - Clean up
-  - `make help` - Show options
-- [ ] Add multi-simulator support
-- [ ] Add regression mode
-- [ ] Document usage
-
-**New File:** `Makefile` (top-level)
-
-#### 3.2 Test Template Generator (2 days)
-**Goal:** Quick project setup
-
-**Tasks:**
-- [ ] Create Python script to generate boilerplate
-- [ ] Generate: agent, driver, monitor, test
-- [ ] Configurable (protocol name, features)
-- [ ] Include README template
-- [ ] Document usage
-
-**New File:** `python/create_testbench.py`
-
-```bash
-# Example usage
-python python/create_testbench.py --protocol spi --name my_spi
-# Creates: my_spi_agent.sv, my_spi_driver.sv, etc.
-```
-
-#### 3.3 Debug Utilities (2 days)
-**Goal:** Better debugging experience
-
-**Tasks:**
-- [ ] Add topology printer enhancement
-- [ ] Add transaction logger
-- [ ] Add waveform markers
-- [ ] Create debug guide
-- [ ] Document usage
-
-**New File:** `vkit/src/evm_debug.sv`
-
-#### 3.4 Performance Profiling (2 days)
-**Goal:** Identify bottlenecks
-
-**Tasks:**
-- [ ] Add phase timing measurement
-- [ ] Add transaction rate monitoring
-- [ ] Create performance report
-- [ ] Document optimization tips
+| UVM Feature | EVM Alternative |
+|---|---|
+| Factory pattern | Direct instantiation |
+| Config DB | Direct VIF assignment |
+| Field macros | Explicit code |
+| Full RAL (uvm_reg) | CSR generator + evm_reg_map |
+| Callbacks | Virtual method overrides |
+| TLM 2.0 | TLM 1.0 is sufficient |
+| Multiple phase domains | Single 12-phase domain |
+| Heartbeat | Quiescence counter |
+| Report catcher | Verbosity levels |
+| Phase jumping | Linear phase execution |
 
 ---
 
-### Phase 4: Integration & Ecosystem (2-3 weeks)
+## 📊 Metrics
 
-#### 4.1 CI/CD Integration (3 days)
-**Goal:** Automated regression testing
-
-**Tasks:**
-- [ ] Create GitHub Actions workflow
-- [ ] Add compilation check
-- [ ] Add example test runs
-- [ ] Add documentation build
-- [ ] Badge in README
-
-**New File:** `.github/workflows/ci.yml`
-
-#### 4.2 Packaging & Distribution (2 days)
-**Goal:** Easy installation
-
-**Tasks:**
-- [ ] Create install script
-- [ ] Package for different simulators
-- [ ] Add to simulator library paths
-- [ ] Document installation
-- [ ] Version management
-
-**New File:** `install.sh` or `install.py`
-
-#### 4.3 Tutorial Videos (1 week)
-**Goal:** Improved learning experience
-
-**Tasks:**
-- [ ] Script and record "Getting Started"
-- [ ] Script and record "Building Your First Agent"
-- [ ] Script and record "Advanced Features"
-- [ ] Upload to YouTube
-- [ ] Link from README
-
-#### 4.4 Community Building (Ongoing)
-**Goal:** Growing user base
-
-**Tasks:**
-- [ ] Set up Discussions on GitHub
-- [ ] Create examples gallery
-- [ ] Write blog posts
-- [ ] Present at conferences
-- [ ] Engage with users
+| Metric | Target | Actual |
+|---|---|---|
+| Framework LOC | < 10K | ~8K |
+| Compilation time | < 10s | < 5s |
+| Learning curve | < 1 week | ~1 day |
+| Examples | 4+ | 4 working |
+| Simulators | 4 | VCS/Questa/Xcelium/Vivado |
+| Protocol agents | - | AXI-Lite + AXI4 Full + 5 others |
+| Documentation files | - | 10 guides + 6 UML |
 
 ---
 
-## 🎓 Education & Outreach
-
-### Documentation Improvements (Ongoing)
-
-#### 5.1 Video Tutorials (Optional)
-- [ ] "EVM in 10 Minutes" - Quick overview
-- [ ] "Your First Testbench" - Step-by-step
-- [ ] "Advanced Features" - QC, coverage, assertions
-- [ ] "Migrating from UVM" - For UVM users
-
-#### 5.2 Application Notes (As Needed)
-- [ ] "Using EVM with Vivado"
-- [ ] "Using EVM with VCS"
-- [ ] "Using EVM with Questa"
-- [ ] "Best Practices for Agent Design"
-- [ ] "Debugging EVM Testbenches"
-
-#### 5.3 Webinars/Presentations (Optional)
-- [ ] "EVM: Lightweight Verification for FPGAs"
-- [ ] "AI-First Development with EVM"
-- [ ] Conference presentations
-
----
-
-## 🚫 What NOT To Do
-
-**Important:** EVM's value is its **simplicity**. Do NOT add these:
-
-❌ **Full UVM Feature Parity** - EVM is intentionally lightweight  
-❌ **Factory Pattern** - Direct instantiation is simpler  
-❌ **Config Database** - Direct VIF assignment works fine  
-❌ **TLM 2.0** - TLM 1.0 is sufficient for embedded  
-❌ **RAL (Register Abstraction Layer)** - EVM has CSR generator  
-❌ **Callbacks** - Adds complexity without enough value  
-❌ **Multiple Phase Domains** - 12 phases is enough  
-❌ **Field Automation Macros** - Explicit code is clearer  
-
-**Guiding Principle:** If UVM users complain "this is simpler than UVM," we're doing it right!
-
----
-
-## 📈 Success Metrics
-
-### Current Achievements ✅
-- ✅ Learning curve: < 1 day (target: < 1 week)
-- ✅ Code size: ~6,000 LOC (target: < 10K)
-- ✅ Compilation: < 5 seconds (target: < 10s)
-- ✅ Examples: 4 working (target: 3+)
-- ✅ Documentation: 6+ guides (target: 5+)
-- ✅ Simulator support: 4 simulators
-
-### Future Goals (Optional)
-- Protocol agents: 5+ (AXI, SPI, I2C, UART, etc.)
-- Community examples: 10+
-- GitHub stars: 100+
-- Active users: 50+
-- Contributions: 10+ contributors
-
----
-
-## 🗓️ Suggested Timeline (If Pursuing Enhancements)
-
-### Quarter 1 (Now - June 2026): Community Growth
-- Focus on documentation improvements
-- Add 1-2 high-value protocol agents (AXI4-Lite, AXI4-Stream)
-- Create more examples
-- Set up CI/CD
-- Engage with early adopters
-
-### Quarter 2 (July - Sep 2026): Ecosystem
-- Add remaining protocol agents (as needed)
-- Create test template generator
-- Add build/automation improvements
-- Tutorial videos
-- Conference presentations
-
-### Quarter 3 (Oct - Dec 2026): Maturity
-- Performance optimizations
-- Advanced examples
-- Application notes
-- User case studies
-- Community contributions
-
-### Quarter 4 (Jan - Mar 2027): Maintenance
-- Bug fixes
-- Documentation updates
-- Feature requests (carefully evaluated)
-- Community support
-
----
-
-## 🎯 Priority Guidance
-
-**If you only have time for 3 things, do:**
-1. **AXI4-Lite Agent** - Most commonly needed protocol
-2. **Multi-Agent Example** - Shows real-world usage
-3. **CI/CD Setup** - Ensures quality
-
-**If you have time for 5 more:**
-4. **Better Build Scripts** - Developer convenience
-5. **AXI4-Stream Agent** - Second most common protocol
-6. **Coverage Example** - Shows advanced features
-7. **Test Template Generator** - Lowers barrier to entry
-8. **Tutorial Video** - Helps adoption
-9. **Real DUT Example** - Demonstrates best practices
-10. **GitHub Discussions** - Community engagement
-
----
-
-## 💡 Contributing
-
-**We welcome contributions!**
-
-**Good First Contributions:**
-- Add protocol agent (SPI, I2C, UART)
-- Create new example
-- Improve documentation
-- Write tutorial
-- Fix bugs
-- Add simulation scripts for other simulators
-
-**Before Starting Large Work:**
-- Open a GitHub Issue to discuss
-- Review CLAUDE.md for coding standards
-- Check this roadmap for priorities
-- Ensure it aligns with EVM philosophy (simplicity!)
-
----
-
-## 📞 Questions?
-
-**For Development:**
-- Check [CLAUDE.md](CLAUDE.md) - Comprehensive development guide
-- Check [AI_DEVELOPMENT.md](AI_DEVELOPMENT.md) - AI workflow
-- Check examples in `examples/`
-
-**For Features:**
-- Check this document - Complete roadmap
-- Open GitHub Issue for discussion
-
-**For Help:**
-- Check [docs/QUICK_START.md](docs/QUICK_START.md)
-- Open GitHub Discussion
-- Open GitHub Issue
-
----
-
-## 🎉 Conclusion
-
-**EVM is COMPLETE and ready for production embedded verification!**
-
-The framework provides:
-- ✅ All critical UVM features (simplified)
-- ✅ Unique features (QC, direct VIF, cmdline)
-- ✅ Complete documentation
-- ✅ Working examples
-- ✅ Multi-simulator support
-
-**Future work is OPTIONAL enhancements only.**
-
-**Start using EVM today for your embedded verification projects!**
-
----
-
-## 📊 Quick Reference
-
-| Status | Description |
-|--------|-------------|
-| ✅ COMPLETE | Core framework - ready to use |
-| 🟢 OPTIONAL | Nice-to-have enhancements |
-| 🔵 FUTURE | Long-term ideas |
-| ❌ SKIP | Intentionally not implementing |
-
-**Current Version:** 1.0.0 (Production Ready - Run Phase Enhancement Needed)  
-**Last Updated:** March 30, 2026  
-**Next Review:** June 2026 (or when community needs arise)
-
----
-
-## Appendix C: Run Phase & Mid-Sim Reset Implementation Plan
-
-### Problem Statement
-
-**Current Issue:**
-- Monitors and scoreboards execute in `main_phase()`
-- When test transitions from `main_phase` → `shutdown_phase`, monitors stop
-- This creates a race condition where final transactions may be lost
-- Mid-simulation resets are not properly handled
-- Sequencers cannot gracefully shut down during reset
-
-**Impact:** 🔴 **CRITICAL** - Affects correctness of verification
-
----
-
-### Solution Architecture
-
-#### 1. Add Parallel Run Phase
-
-**Concept:** `run_phase()` executes in parallel with reset/configure/main/shutdown phases
-
-```systemverilog
-// Current (WRONG):
-reset_phase()     →  configure_phase()  →  main_phase()  →  shutdown_phase()
-                                            ↑
-                                      monitors/scoreboards
-                                      (stop here!)
-
-// Proposed (CORRECT):
-reset_phase()     →  configure_phase()  →  main_phase()  →  shutdown_phase()
-                  ↓                      ↓               ↓                   ↓
-              run_phase() - continuous execution
-                  ↑
-            monitors/scoreboards/sequencers run here
-```
-
-#### 2. Mid-Simulation Reset Support
-
-**Add reset event infrastructure:**
-```systemverilog
-class evm_component;
-    event reset_asserted;   // Triggered when reset starts
-    event reset_deasserted; // Triggered when reset ends
-    bit in_reset;          // Status flag
-    
-    // New virtual tasks
-    virtual task on_reset_assert();
-        // Override to handle reset assertion
-    endtask
-    
-    virtual task on_reset_deassert();
-        // Override to handle reset deassertion  
-    endtask
-endclass
-```
-
----
-
-### Implementation Details
-
-#### File 1: `vkit/src/evm_component.sv`
-
-**Changes Required:**
-
-1. Add run_phase execution:
-```systemverilog
-task run_phase_execution();
-    fork
-        begin
-            // Execute user's run_phase
-            run_phase();
-        end
-        begin
-            // Monitor for reset events
-            forever begin
-                @(reset_asserted);
-                in_reset = 1;
-                on_reset_assert();
-                @(reset_deasserted);
-                in_reset = 0;
-                on_reset_deassert();
-            end
-        end
-    join_none
-endtask
-```
-
-2. Add reset event handling:
-```systemverilog
-function void assert_reset();
-    in_reset = 1;
-    ->reset_asserted;
-    // Propagate to children
-    foreach(children[i])
-        children[i].assert_reset();
-endfunction
-
-function void deassert_reset();
-    ->reset_deasserted;
-    in_reset = 0;
-    // Propagate to children
-    foreach(children[i])
-        children[i].deassert_reset();
-endfunction
-```
-
-#### File 2: `vkit/src/evm_root.sv`
-
-**Changes Required:**
-
-1. Modify phase execution to fork run_phase:
-```systemverilog
-task execute_run_time_phases();
-    fork
-        begin
-            // Sequential phases
-            reset_phase();
-            configure_phase();
-            main_phase();
-            shutdown_phase();
-        end
-        begin
-            // Parallel run_phase
-            run_phase();
-        end
-    join
-endtask
-```
-
-2. Add global reset control:
-```systemverilog
-function void global_reset_assert();
-    if (top_component != null)
-        top_component.assert_reset();
-endfunction
-
-function void global_reset_deassert();
-    if (top_component != null)
-        top_component.deassert_reset();
-endfunction
-```
-
-#### File 3: `vkit/src/evm_monitor.sv`
-
-**Changes Required:**
-
-1. Move monitoring to run_phase:
-```systemverilog
-virtual task run_phase();
-    super.run_phase();
-    
-    fork
-        begin
-            // Continuous monitoring
-            forever begin
-                @(posedge vif.clk);
-                if (!in_reset) begin
-                    // Collect transactions
-                    collect_transaction();
-                end
-                else begin
-                    // Paused during reset
-                    @(reset_deasserted);
-                end
-            end
-        end
-    join_none
-endtask
-```
-
-2. Add reset handling:
-```systemverilog
-virtual task on_reset_assert();
-    // Flush any partial transactions
-    evm_report_handler::report(EVM_INFO, get_full_name(), 
-        "Monitor paused due to reset");
-endtask
-
-virtual task on_reset_deassert();
-    // Resume monitoring
-    evm_report_handler::report(EVM_INFO, get_full_name(), 
-        "Monitor resumed after reset");
-endtask
-```
-
-#### File 4: `vkit/src/evm_scoreboard.sv`
-
-**Changes Required:**
-
-1. Move checking to run_phase:
-```systemverilog
-virtual task run_phase();
-    super.run_phase();
-    
-    fork
-        begin
-            // Continuous checking
-            forever begin
-                if (!in_reset) begin
-                    // Process transactions from mailbox
-                    check_transaction();
-                end
-                else begin
-                    // Wait for reset to complete
-                    @(reset_deasserted);
-                end
-            end
-        end
-    join_none
-endtask
-```
-
-2. Add reset handling:
-```systemverilog
-virtual task on_reset_assert();
-    // Flush all pending comparisons
-    expected_q.delete();
-    actual_q.delete();
-    evm_report_handler::report(EVM_INFO, get_full_name(), 
-        "Scoreboard flushed due to reset");
-endtask
-
-virtual task on_reset_deassert();
-    // Ready for new transactions
-    evm_report_handler::report(EVM_INFO, get_full_name(), 
-        "Scoreboard ready after reset");
-endtask
-```
-
-#### File 5: `vkit/src/evm_driver.sv`
-
-**Changes Required:**
-
-1. Add reset monitoring in run_phase:
-```systemverilog
-virtual task run_phase();
-    super.run_phase();
-    
-    fork
-        begin
-            // Monitor for mid-sim reset
-            forever begin
-                @(reset_asserted);
-                on_reset_assert();
-                @(reset_deasserted);
-                on_reset_deassert();
-            end
-        end
-    join_none
-endtask
-```
-
-2. Modify driving to check reset:
-```systemverilog
-virtual task drive();
-    while (!in_reset) begin
-        req_fifo.get(req);
-        if (!in_reset) begin  // Double-check before driving
-            drive_transaction(req);
-        end
-    end
-endtask
-```
-
-#### File 6: `vkit/src/evm_sequencer.sv`
-
-**Changes Required:**
-
-1. Add graceful shutdown on reset:
-```systemverilog
-virtual task on_reset_assert();
-    // Stop accepting new sequences
-    // Flush pending requests
-    req_fifo.flush();
-    rsp_fifo.flush();
-    evm_report_handler::report(EVM_INFO, get_full_name(), 
-        "Sequencer flushed due to reset");
-endtask
-
-virtual task on_reset_deassert();
-    // Ready to accept sequences again
-    evm_report_handler::report(EVM_INFO, get_full_name(), 
-        "Sequencer ready after reset");
-endtask
-```
-
----
-
-### Migration Path
-
-**Phase 1: Add Infrastructure (1 day)**
-- Add run_phase to evm_component
-- Add reset events and handling
-- Update evm_root phase execution
-
-**Phase 2: Update Base Classes (1 day)**
-- Move monitor to run_phase
-- Move scoreboard to run_phase
-- Add reset handling to driver/sequencer
-
-**Phase 3: Update Examples (1 day)**
-- Update all examples to use run_phase
-- Add mid-sim reset example
-- Update documentation
-
-**Phase 4: Testing & Validation (1 day)**
-- Test phase transitions
-- Test mid-sim reset
-- Verify no regressions
-
-**Total Effort:** 3-4 days
-
----
-
-### Benefits
-
-✅ **Correctness:** Monitors never miss transactions  
-✅ **Robustness:** Proper mid-sim reset handling  
-✅ **UVM Alignment:** Matches UVM run_phase architecture  
-✅ **Flexibility:** Clean separation of test stimulus vs. monitoring  
-✅ **Debugging:** Easier to debug phase-related issues
-
----
-
-### Backward Compatibility
-
-**Option 1: Breaking Change (Recommended)**
-- Require all monitors/scoreboards to move to run_phase
-- Clear migration guide
-- Update all examples
-
-**Option 2: Dual Support**
-- Support both main_phase and run_phase temporarily
-- Deprecation warning if using main_phase
-- Remove old way in version 2.0
-
----
-
-*This implementation is CRITICAL for production use with complex testbenches and mid-simulation resets.*
-
----
-
-*EVM: 100% of what you need, 10% of the complexity.* 🚀
+*EVM: Everything you need, nothing you don't.* 🚀

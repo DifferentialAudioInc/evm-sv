@@ -9,7 +9,7 @@
 // Description: Base component class for Embedded Verification Methodology (EVM)
 //              Extends evm_object with hierarchy and logging support
 //              Lightweight alternative to uvm_component
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 //==============================================================================
 

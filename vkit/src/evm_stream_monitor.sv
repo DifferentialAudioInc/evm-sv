@@ -8,7 +8,7 @@
 // Class: evm_stream_monitor
 // Description: Base streaming monitor - captures data and writes to file
 //              Captures samples every clock cycle when valid
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

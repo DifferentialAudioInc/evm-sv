@@ -8,7 +8,7 @@
 // Class: evm_csr_sequence
 // Description: CSR access sequence - collection of CSR transactions
 //              Provides convenient methods for building register sequences
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

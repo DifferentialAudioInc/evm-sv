@@ -7,7 +7,7 @@
 //==============================================================================
 // Class: evm_gpio_agent
 // Description: GPIO agent for EVM - controls GPIO pins
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

@@ -8,8 +8,9 @@
 // Class: evm_sequencer
 // Description: Sequencer - manages and dispatches sequence items to driver
 //              Uses mailbox for item passing
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
+// Updated: 2026-04-09 - Added run_phase reset monitoring, on_reset_* hooks
 //==============================================================================
 
 class evm_sequencer #(type REQ = evm_sequence_item, type RSP = REQ) extends evm_component;
@@ -51,6 +52,71 @@ class evm_sequencer #(type REQ = evm_sequence_item, type RSP = REQ) extends evm_
         items_sent = 0;
         items_completed = 0;
     endfunction
+    
+    //==========================================================================
+    // Run Phase - Reset Event Monitor
+    // Source: EVM mid-simulation reset support
+    // Rationale: Sequencer must flush pending items on reset to prevent stale
+    //            transactions from being driven after reset completes
+    //==========================================================================
+    virtual task run_phase();
+        super.run_phase();
+        
+        log_info("Sequencer run_phase: reset event monitor active", EVM_HIGH);
+        
+        fork
+            begin
+                // Background thread: monitor reset events
+                forever begin
+                    @(reset_asserted);
+                    on_reset_assert();
+                    @(reset_deasserted);
+                    on_reset_deassert();
+                end
+            end
+        join_none
+    endtask
+    
+    //==========================================================================
+    // Reset Event Handlers - Flush pending items on reset
+    //==========================================================================
+    
+    // Handle reset assertion - flush all pending sequence items
+    // Prevents stale pre-reset transactions from being driven post-reset
+    virtual task on_reset_assert();
+        super.on_reset_assert();
+        log_info("Sequencer: flushing pending items due to reset", EVM_MEDIUM);
+        
+        // Flush the legacy mailbox
+        begin
+            int flushed = 0;
+            evm_sequence_item item;
+            while (item_mbx.try_get(item)) begin
+                flushed++;
+            end
+            if (flushed > 0) begin
+                log_info($sformatf("Sequencer: flushed %0d pending items from mailbox", flushed), 
+                         EVM_HIGH);
+            end
+        end
+        
+        // Drain TLM export FIFOs directly (export has no flush() method)
+        if (seq_item_export != null) begin
+            REQ req_item;
+            RSP rsp_item;
+            mailbox#(REQ) req_fifo = seq_item_export.get_req_fifo();
+            mailbox#(RSP) rsp_fifo = seq_item_export.get_rsp_fifo();
+            if (req_fifo != null) while (req_fifo.try_get(req_item)) begin end
+            if (rsp_fifo != null) while (rsp_fifo.try_get(rsp_item)) begin end
+            log_info("Sequencer: TLM FIFOs flushed", EVM_HIGH);
+        end
+    endtask
+    
+    // Handle reset deassertion - ready for new sequences
+    virtual task on_reset_deassert();
+        super.on_reset_deassert();
+        log_info("Sequencer: ready for new sequences after reset", EVM_MEDIUM);
+    endtask
     
     //==========================================================================
     // Item Management

@@ -9,7 +9,7 @@
 // Description: Parameterized base monitor class for EVM
 //              Uses virtual interface for signal monitoring
 //              No config database - direct virtual interface assignment
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 //==============================================================================
 

@@ -8,7 +8,7 @@
 // Class: evm_clk_driver
 // Description: Clock generator driver for EVM
 //              Generates a single clock with configurable frequency
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

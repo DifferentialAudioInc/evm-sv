@@ -8,7 +8,7 @@
 // Class: evm_pcie_agent
 // Description: PCIe agent for EVM
 //              Manages PCIe Bus Functional Model
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 //==============================================================================
 

@@ -9,7 +9,7 @@
 // Description: CSR (Control/Status Register) transaction item
 //              Extends generic sequence_item with address/data pairs
 //              Used for simple register access protocols (AXI-Lite, APB, etc.)
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

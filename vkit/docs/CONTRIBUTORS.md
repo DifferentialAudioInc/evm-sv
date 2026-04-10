@@ -9,13 +9,13 @@ EVM is made possible by these wonderful people:
 - Created EVM to solve embedded verification challenges
 - Initial design, architecture, and implementation
 
-## Core Team
+## Author
 
-**Differential Audio Inc. Engineering Team**
-- Initial framework design and architecture
-- Core implementation
+**Eric Dyer** (Differential Audio Inc.)
+- Initial framework design, architecture, and implementation
 - Streaming and transaction models
 - Python toolchain integration
+- AI-assisted development workflow
 
 ## Contributors
 

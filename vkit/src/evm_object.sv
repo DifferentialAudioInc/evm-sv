@@ -9,7 +9,7 @@
 // Description: Base object class for Embedded Verification Methodology (EVM)
 //              Extends evm_base for logging support
 //              Lightweight alternative to uvm_object
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 //==============================================================================
 

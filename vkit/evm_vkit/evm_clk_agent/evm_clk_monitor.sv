@@ -8,7 +8,7 @@
 // Class: evm_clk_monitor
 // Description: Clock monitor for EVM
 //              Monitors clock frequency and duty cycle
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

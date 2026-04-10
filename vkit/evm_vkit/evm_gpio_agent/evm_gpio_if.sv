@@ -8,7 +8,7 @@
 // Interface: evm_gpio_if
 // Description: General Purpose I/O interface
 //              Supports input, output, and bidirectional pins
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

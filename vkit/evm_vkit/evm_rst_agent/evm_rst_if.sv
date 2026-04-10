@@ -8,7 +8,7 @@
 // Interface: evm_rst_if
 // Description: Reset interface for reset agent
 //              Contains reset signals for testbench
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 //==============================================================================
 

@@ -7,7 +7,7 @@
 //==============================================================================
 // Class: evm_gpio_monitor
 // Description: GPIO monitor - observes pin changes
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

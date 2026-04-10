@@ -8,7 +8,7 @@
 // Class: evm_pcie_driver
 // Description: PCIe Bus Functional Model driver for EVM
 //              Simplified PCIe transaction generator
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 //==============================================================================
 

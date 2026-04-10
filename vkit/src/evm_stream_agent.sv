@@ -8,7 +8,7 @@
 // Class: evm_stream_agent
 // Description: Base streaming agent - combines driver and monitor
 //              Provides Python script integration
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

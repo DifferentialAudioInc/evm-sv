@@ -9,7 +9,7 @@
 // Description: Generic base class for all transaction items
 //              Provides only timing and status tracking
 //              Derived classes add protocol-specific fields
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

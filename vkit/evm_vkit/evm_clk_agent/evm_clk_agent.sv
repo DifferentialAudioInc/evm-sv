@@ -8,7 +8,7 @@
 // Class: evm_clk_agent
 // Description: Clock generator agent for EVM
 //              Active agent with monitor for clock verification
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

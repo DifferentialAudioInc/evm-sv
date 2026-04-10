@@ -9,7 +9,7 @@
 // Description: ADC streaming agent for EVM
 //              Extends stream agent for Python script integration
 //              Manages ADC behavioral model with signal generation
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

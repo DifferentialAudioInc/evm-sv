@@ -8,7 +8,7 @@
 // Class: evm_sequence
 // Description: Base sequence class - container for sequence items
 //              Executes items through sequencer
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

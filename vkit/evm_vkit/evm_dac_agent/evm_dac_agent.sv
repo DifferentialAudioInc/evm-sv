@@ -9,7 +9,7 @@
 // Description: DAC passive monitoring agent for EVM
 //              Extends stream agent for Python script integration
 //              Captures and analyzes DAC output data (passive-only)
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

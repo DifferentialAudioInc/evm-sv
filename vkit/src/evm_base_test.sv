@@ -10,7 +10,7 @@
 //              Extends evm_component (not root!)
 //              Accesses root singleton for phase control and objections
 //              Includes optional built-in Quiescence Counter (evm_qc)
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 // Updated: 2026-03-29 - Added optional quiescence counter support
 //==============================================================================

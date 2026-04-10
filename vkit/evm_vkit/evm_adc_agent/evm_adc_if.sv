@@ -8,7 +8,7 @@
 // Interface: evm_adc_if
 // Description: ADC interface for ADC behavioral model
 //              Simulates AD9634 ADC outputs (4 channels)
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 //==============================================================================
 

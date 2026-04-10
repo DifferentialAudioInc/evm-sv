@@ -8,7 +8,7 @@
 // Class: evm_rst_monitor
 // Description: Reset monitor for EVM
 //              Monitors reset assertion and deassertion
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

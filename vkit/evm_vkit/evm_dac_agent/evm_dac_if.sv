@@ -8,7 +8,7 @@
 // Interface: evm_dac_if
 // Description: DAC output interface for passive monitoring
 //              Captures DAC data streams for analysis
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

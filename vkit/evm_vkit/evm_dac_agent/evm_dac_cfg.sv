@@ -8,7 +8,7 @@
 // Class: evm_dac_cfg
 // Description: Configuration class for DAC agent (passive monitoring)
 //              Supports Python analysis of captured DAC output
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

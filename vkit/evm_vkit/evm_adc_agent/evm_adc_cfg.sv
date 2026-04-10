@@ -7,7 +7,7 @@
 //==============================================================================
 // Class: evm_adc_cfg
 // Description: Configuration class for ADC agent with Python integration
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

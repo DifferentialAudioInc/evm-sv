@@ -7,7 +7,7 @@
 //==============================================================================
 // Class: evm_gpio_driver
 // Description: GPIO driver - drives input pins to DUT
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

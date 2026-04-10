@@ -8,7 +8,7 @@
 // Class: evm_adc_driver
 // Description: ADC behavioral model driver for EVM
 //              Simulates AD9634 4-channel ADC with sine wave generation
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 //==============================================================================
 

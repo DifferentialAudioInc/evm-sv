@@ -8,7 +8,7 @@
 // Class: evm_reg
 // Description: Lightweight register model (similar to UVM RAL)
 //              Contains fields and generates evm_csr_item transactions
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

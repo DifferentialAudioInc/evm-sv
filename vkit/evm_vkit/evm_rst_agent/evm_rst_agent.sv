@@ -8,7 +8,7 @@
 // Class: evm_rst_agent
 // Description: Reset agent for EVM
 //              Active agent with monitor for reset verification
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

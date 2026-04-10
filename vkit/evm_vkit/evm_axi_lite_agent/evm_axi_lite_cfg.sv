@@ -8,7 +8,7 @@
 // Class: evm_axi_lite_cfg
 // Description: Configuration class for AXI4-Lite agent
 //              Supports master, slave, and passive modes with timing control
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 
@@ -33,6 +33,9 @@ class evm_axi_lite_cfg extends evm_object;
     
     // Operating mode
     evm_axi_mode_e mode = EVM_AXI_ACTIVE_MASTER;
+    
+    // Enable sequencer for sequence-based stimulus (default: off for backward compat)
+    bit use_sequencer = 0;
     
     //==========================================================================
     // Master Configuration (when mode = ACTIVE_MASTER)

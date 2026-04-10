@@ -8,7 +8,7 @@
 // Interface: evm_axi_lite_if
 // Description: AXI4-Lite Master Interface (32-bit)
 //              For driving CSR register accesses
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 //==============================================================================
 

@@ -8,7 +8,7 @@
 // Class: evm_clk_cfg
 // Description: Configuration for clock generator
 //              Generic single clock configuration
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

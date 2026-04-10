@@ -8,7 +8,7 @@
 // Interface: evm_stream_if
 // Description: Generic streaming interface for continuous data transfer
 //              Used for ADC/DAC and other streaming agents
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

@@ -1,160 +1,90 @@
-# EVM Framework UML Documentation
+# EVM Framework UML Diagrams
 
-Complete architecture diagrams for the Embedded Verification Methodology (EVM) framework.
+**Author:** Eric Dyer (Differential Audio Inc.)  
+**Last Updated:** 2026-04-09  
 
-## Quick Navigation
-
-| Document | Description |
-|----------|-------------|
-| [01. Base Components](01_base_components.md) | Core classes: evm_object, evm_component, evm_log, evm_test |
-| [02. Register Model](02_register_model.md) | RAL architecture: fields, registers, blocks |
-| [03. Utilities](03_utilities.md) | Memory model and scoreboard |
-| [04. Agents](04_agents.md) | Protocol agents overview and usage |
-
-## Document Overview
-
-### 01. Base Components
-Core infrastructure and base classes that form the foundation of EVM:
-- **evm_object** - Base class with logging
-- **evm_component** - Phased execution model
-- **evm_log** - Centralized logging system
-- **evm_root** - Simulation controller
-- **evm_base_test** - Test base class with objection mechanism
-
-**Key Diagrams:**
-- Class hierarchy
-- Phase execution flow
-- Verbosity levels
-
-### 02. Register Model
-Complete Register Abstraction Layer (RAL) documentation:
-- **evm_reg_field** - Bit fields with 9 access types
-- **evm_reg** - Register with field collection
-- **evm_reg_block** - Register block with base address
-- **Auto-generation** - YAML to RAL conversion
-
-**Key Diagrams:**
-- RAL class hierarchy
-- Field access types
-- Register model hierarchy example
-- Register access flow
-
-### 03. Utilities
-Support components for verification:
-- **evm_memory_model** - 64MB sparse memory with file I/O
-- **evm_scoreboard** - Transaction checking with 3 matching modes
-
-**Key Diagrams:**
-- Memory model class
-- Scoreboard class (parameterized)
-- Matching modes (FIFO, Associative, Unordered)
-- Usage flows
-
-### 04. Agents
-Protocol-specific verification components:
-- **AXI-Lite** - 3 modes (MASTER/SLAVE/PASSIVE)
-- **ADC** - Active with Python stimulus generation
-- **DAC** - Passive with Python analysis
-- **GPIO** - 32-pin control
-- **Clock/Reset** - Infrastructure agents
-- **PCIe** - Memory-mapped BFM
-
-**Key Diagrams:**
-- Agent base architecture
-- Protocol agents summary
-- Python integration flow
-- Test environment structure
-
-## How to Use This Documentation
-
-### For New Users
-1. Start with **Base Components** to understand the foundation
-2. Read **Agents** to see available protocol support
-3. Check **Register Model** if using CSR/register access
-4. Review **Utilities** for memory and checking support
-
-### For Implementation
-1. Choose relevant **Agents** for your DUT
-2. Configure **Register Model** if needed (via CSR generator)
-3. Add **Memory Model** for DMA/buffer simulation
-4. Use **Scoreboard** for output checking
-
-### For Viewing Diagrams
-- **GitHub**: Diagrams render automatically in markdown preview
-- **VS Code**: Install "Markdown Preview Mermaid Support" extension
-  - Press `Ctrl+Shift+V` (Windows) or `Cmd+Shift+V` (Mac)
-- **Online**: Use [Mermaid Live Editor](https://mermaid.live)
-
-## Framework Architecture Summary
-
-```
-EVM Framework
-├── Base (01)
-│   ├── evm_object (logging, identification)
-│   ├── evm_component (phases, hierarchy)
-│   ├── evm_log (centralized logging)
-│   ├── evm_root (simulation control)
-│   └── evm_base_test (test base class)
-│
-├── Register Model (02)
-│   ├── evm_reg_field (9 access types)
-│   ├── evm_reg (field collection)
-│   ├── evm_reg_block (address management)
-│   └── Auto-generation (YAML → RAL)
-│
-├── Utilities (03)
-│   ├── evm_memory_model (64MB sparse memory)
-│   └── evm_scoreboard (3 matching modes)
-│
-└── Agents (04)
-    ├── AXI-Lite (register access)
-    ├── ADC (signal generation + Python)
-    ├── DAC (capture + Python)
-    ├── GPIO (control signals)
-    ├── Clock/Reset (infrastructure)
-    └── PCIe (memory-mapped BFM)
-```
-
-## Key Features
-
-### Phased Execution
-All components follow a phased execution model:
-1. **build_phase()** - Create sub-components
-2. **connect_phase()** - Connect interfaces
-3. **run_phase()** - Main execution (spawns main_phase())
-4. **final_phase()** - Cleanup and reporting
-
-### Python Integration
-- **ADC Agent**: Stimulus generation via `gen_stimulus.py`
-- **DAC Agent**: Analysis via `analyze_spectrum.py`
-- FFT, THD, SNR analysis support
-- File-based data exchange
-
-### Register Model
-- Lightweight RAL alternative
-- 9 field access types (RW, RO, WO, RC, RS, WC, WS, W1C, W1S)
-- Auto-generated from YAML
-- Top-level model aggregation
-
-### Verification Support
-- Memory model for DMA/buffer simulation
-- Scoreboard with multiple matching modes
-- Comprehensive logging system
-- Statistics and reporting
-
-## Related Documentation
-
-- [REGISTER_MODEL.md](../REGISTER_MODEL.md) - Detailed RAL documentation
-- [CONTRIBUTING.md](../CONTRIBUTING.md) - Contribution guidelines
-- [CSR Generator README](../../../csr_gen/README.md) - CSR generator usage
-
-## Version Information
-
-- **Created**: 2026-03-07
-- **EVM Version**: 1.0
-- **Diagram Format**: Mermaid
-- **License**: MIT
+All diagrams use [Mermaid](https://mermaid.js.org/) and render automatically in:
+- **GitHub** — markdown preview
+- **VS Code** — install "Markdown Preview Mermaid Support" extension, then `Ctrl+Shift+V`
+- **Browser** — [Mermaid Live Editor](https://mermaid.live)
 
 ---
 
-*For questions or issues, please refer to the main EVM documentation or file an issue on GitHub.*
+## Document Index
+
+| File | Contents | Key Diagrams |
+|---|---|---|
+| [01_core_framework.md](01_core_framework.md) | `evm_object`, `evm_component`, `evm_env`, `evm_root`, `evm_base_test`, `evm_test_registry`, `evm_qc` | Class hierarchy, 12-phase + run_phase, mid-sim reset flow |
+| [02_register_model.md](02_register_model.md) | `evm_reg_field`, `evm_reg`, `evm_reg_block`, `evm_reg_map`, `evm_reg_predictor`, concrete predictors | RAL hierarchy, address map, predictor auto-sync flow |
+| [03_utilities.md](03_utilities.md) | `evm_scoreboard`, `evm_memory_model`, `evm_sequence_library`, `evm_coverage`, `evm_assertions` | Scoreboard modes, memory/DMA usage, sequence library |
+| [04_agents_axi_lite.md](04_agents_axi_lite.md) | `evm_axi_lite_master_agent`, monitor with 7 analysis ports, all transaction types | Transaction monitoring flow, predictor integration |
+| [05_agents_axi4_full.md](05_agents_axi4_full.md) | `evm_axi4_full_master_agent`, burst driver, monitor with 7 ports, all AXI4 txn types | Write burst sequence, interface parameters |
+| [06_tlm_sequences.md](06_tlm_sequences.md) | `evm_analysis_port`, `evm_analysis_imp`, `evm_seq_item_pull_port`, sequences, `evm_virtual_sequence` | Driver↔sequencer connection, multi-subscriber broadcast |
+
+---
+
+## Framework Overview
+
+```
+EVM Framework
+├── Core (01)
+│   ├── evm_object              Base object with logging
+│   ├── evm_component           Phased execution + reset events (12 phases + run_phase)
+│   ├── evm_env                 Environment layer (test → agents)
+│   ├── evm_root                Singleton controller + test runner
+│   ├── evm_base_test           Test base class with QC
+│   ├── evm_test_registry       +EVM_TESTNAME test selection
+│   └── evm_qc                  Quiescence counter (unique to EVM)
+│
+├── Register Model (02)
+│   ├── evm_reg_field           Bit fields (9 access types)
+│   ├── evm_reg                 Register with predict/mirror
+│   ├── evm_reg_block           Register block (from CSR generator)
+│   ├── evm_reg_map             Address map (NEW)
+│   └── evm_reg_predictor       Auto-mirror updater (NEW)
+│
+├── Utilities (03)
+│   ├── evm_scoreboard          3 matching modes (FIFO/Assoc/Unordered)
+│   ├── evm_memory_model        64-bit sparse memory with file I/O
+│   ├── evm_sequence_library    Named sequence registry (NEW)
+│   ├── evm_coverage            Coverage wrapper
+│   └── evm_assertions          Assertion checker
+│
+├── AXI4-Lite Agent (04)
+│   ├── evm_axi_lite_master_agent    Direct API + optional sequencer
+│   ├── evm_axi_lite_master_driver   AXI-Lite protocol driver
+│   ├── evm_axi_lite_monitor         7 analysis ports (channel + composite)
+│   ├── 7 transaction types          aw/w/b/ar/r/write/read txn
+│   └── evm_axi_lite_write_predictor Ready-to-use RAL predictor
+│
+├── AXI4 Full Agent (05) [NEW]
+│   ├── evm_axi4_full_master_agent   Burst API + active/passive modes
+│   ├── evm_axi4_full_master_driver  Burst write/read with WLAST/RLAST
+│   ├── evm_axi4_full_monitor        7 analysis ports (channel + composite)
+│   └── 7 transaction types          aw/w/b/ar/r/write/read with burst data[$]
+│
+└── TLM & Sequences (06)
+    ├── evm_analysis_port       1-to-many broadcast
+    ├── evm_analysis_imp        Subscriber mailbox
+    ├── evm_seq_item_pull_port  Driver pulls from sequencer
+    ├── evm_seq_item_pull_export Sequencer provides items
+    ├── evm_sequence_item       Base transaction
+    ├── evm_sequence            Transaction collection
+    ├── evm_csr_item            CSR-specific transaction
+    ├── evm_csr_sequence        CSR sequence builder
+    ├── evm_sequencer           Sequence dispatcher
+    └── evm_virtual_sequence    Multi-agent coordinator
+```
+
+---
+
+## Quick Reference: Which Diagram to Use
+
+**"How do phases work?"** → [01_core_framework.md](01_core_framework.md) — sequence diagram  
+**"How does run_test_by_name work?"** → [01_core_framework.md](01_core_framework.md) — test registry  
+**"How does mid-sim reset propagate?"** → [01_core_framework.md](01_core_framework.md) — reset event flow  
+**"How do I set up the RAL?"** → [02_register_model.md](02_register_model.md)  
+**"How does the predictor auto-update the mirror?"** → [02_register_model.md](02_register_model.md) — sequence diagram  
+**"What analysis ports does the AXI-Lite monitor have?"** → [04_agents_axi_lite.md](04_agents_axi_lite.md)  
+**"How do I connect a scoreboard?"** → [03_utilities.md](03_utilities.md) + [06_tlm_sequences.md](06_tlm_sequences.md)  
+**"How does write burst work in AXI4?"** → [05_agents_axi4_full.md](05_agents_axi4_full.md) — sequence diagram  

@@ -9,8 +9,10 @@
 // Description: Parameterized base driver class for EVM
 //              Uses virtual interface for driving signals
 //              No config database - direct virtual interface assignment
-// Author: Engineering Team
+//              run_phase() monitors reset events; main_phase() drives stimulus
+// Author: Eric Dyer
 // Date: 2026-03-05
+// Updated: 2026-04-09 - Added run_phase reset monitoring, on_reset_* hooks
 //==============================================================================
 
 virtual class evm_driver #(type VIF, type REQ = int, type RSP = REQ) extends evm_component;
@@ -60,7 +62,42 @@ virtual class evm_driver #(type VIF, type REQ = int, type RSP = REQ) extends evm
     endfunction
     
     //==========================================================================
+    // Run Phase - Reset Event Monitor (runs parallel to sequential phases)
+    // Source: EVM mid-simulation reset support
+    // Rationale: Driver must respond to mid-simulation reset events:
+    //            - Stop ongoing transactions when reset asserts
+    //            - Resume driving when reset deasserts
+    //            - Prevents protocol violations during reset
+    // Note: Driver stimulus remains in main_phase() driven by sequences.
+    //       This run_phase() only handles reset events in the background.
+    //==========================================================================
+    virtual task run_phase();
+        super.run_phase();
+        
+        if (vif == null) begin
+            log_warning("Driver run_phase: virtual interface not set, skipping reset monitor");
+            return;
+        end
+        
+        log_info("Driver run_phase: reset event monitor active", EVM_HIGH);
+        
+        fork
+            begin
+                // Background thread: monitor reset events indefinitely
+                forever begin
+                    @(reset_asserted);
+                    on_reset_assert();
+                    @(reset_deasserted);
+                    on_reset_deassert();
+                end
+            end
+        join_none
+    endtask
+    
+    //==========================================================================
     // Driver Main Phase - Override in derived drivers
+    // Rationale: Stimulus generation happens here, driven by sequences
+    //            Check in_reset flag before driving to avoid protocol violations
     //==========================================================================
     virtual task main_phase();
         if (vif == null) begin
@@ -69,6 +106,42 @@ virtual class evm_driver #(type VIF, type REQ = int, type RSP = REQ) extends evm
         end
         log_info("Driver main_phase started", EVM_LOW);
         // Override in derived class to drive interface
+        // Pattern:
+        //   forever begin
+        //     if (!in_reset) begin
+        //       seq_item_port.get_next_item(req);
+        //       drive_transaction(req);
+        //       seq_item_port.item_done();
+        //     end else begin
+        //       @(reset_deasserted);
+        //     end
+        //   end
+    endtask
+    
+    //==========================================================================
+    // Reset Event Handlers - Override in derived drivers
+    // Called from run_phase() background thread when reset events occur
+    //==========================================================================
+    
+    // Handle reset assertion - stop driving, idle the bus
+    // Typical actions:
+    //   - Deassert all output signals (idle state)
+    //   - Abandon any in-progress transaction
+    //   - Clear any local state/queues
+    virtual task on_reset_assert();
+        super.on_reset_assert();
+        log_info("Driver: reset asserted, idling bus", EVM_MEDIUM);
+        // Derived class: deassert outputs here
+    endtask
+    
+    // Handle reset deassertion - ready to drive again
+    // Typical actions:
+    //   - Initialize bus to idle state
+    //   - Prepare for first transaction
+    virtual task on_reset_deassert();
+        super.on_reset_deassert();
+        log_info("Driver: reset deasserted, ready to drive", EVM_MEDIUM);
+        // Derived class: prepare bus for operation here
     endtask
     
     //==========================================================================

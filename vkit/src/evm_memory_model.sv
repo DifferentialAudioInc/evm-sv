@@ -8,7 +8,7 @@
 // Class: evm_memory_model
 // Description: Behavioral memory model for DMA buffers and storage
 //              Supports byte-addressable read/write with latency
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

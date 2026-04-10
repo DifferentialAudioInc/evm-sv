@@ -8,7 +8,7 @@
 // Class: evm_reg_block
 // Description: Lightweight register block model (similar to UVM RAL block)
 //              Contains multiple registers and manages register access
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

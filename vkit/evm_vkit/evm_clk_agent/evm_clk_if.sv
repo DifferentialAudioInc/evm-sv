@@ -8,7 +8,7 @@
 // Interface: evm_clk_if
 // Description: Generic clock interface for clock generator
 //              Single clock - instantiate multiple times for multiple clocks
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 

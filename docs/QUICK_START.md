@@ -1,27 +1,24 @@
-# EVM Quick Start Guide
+# EVM Quick Start
 
-Get started with EVM in 5 minutes!
+**Author:** Eric Dyer (Differential Audio Inc.)  
+**Last Updated:** 2026-04-09  
 
----
-
-## 📦 What is EVM?
-
-**EVM (Embedded Verification Methodology)** is a lightweight alternative to UVM for embedded systems verification.
-
-- ✅ **100% of UVM critical features**
-- ✅ **10% of UVM code complexity**
-- ✅ **Compile in seconds, not minutes**
-- ✅ **Learn in days, not weeks**
+Get a testbench running in 15 minutes.
 
 ---
 
-## 🚀 Quick Example
+## 1. Import EVM
 
 ```systemverilog
-// 1. Import EVM
-import evm_pkg::*;
+import evm_pkg::*;        // Core framework
+import evm_vkit_pkg::*;   // Protocol agents (AXI-Lite, AXI4 Full, etc.)
+```
 
-// 2. Create a test
+---
+
+## 2. Minimal Test (no agents)
+
+```systemverilog
 class my_test extends evm_base_test;
     function new(string name = "my_test");
         super.new(name);
@@ -29,30 +26,43 @@ class my_test extends evm_base_test;
     
     virtual task main_phase();
         super.main_phase();
-        raise_objection("test");
+        raise_objection("test");   // ← required or phase ends immediately
         
-        // Your test code here
-        #1us;
+        #1us;                      // your test code here
         
         drop_objection("test");
     endtask
 endclass
 
-// 3. Run the test
+// tb_top.sv
 initial begin
-    my_test test = new("my_test");
-    evm_root::get().run_test(test);
+    my_test t = new("my_test");
+    evm_root::get().run_test(t);
+    $finish;
 end
 ```
 
 ---
 
-## 🏗️ Basic Structure
+## 3. Typical IP Verification Structure
 
-### 1. Transaction
+```
+evm_base_test
+  └── evm_env
+        ├── evm_axi_lite_master_agent   (CSR writes/reads)
+        ├── evm_axi4_full_master_agent  (DMA burst access)
+        ├── evm_scoreboard              (check output)
+        └── evm_reg_map + predictor     (RAL + auto-mirror)
+```
+
+---
+
+## 4. Define a Transaction
+
 ```systemverilog
 class my_txn extends evm_sequence_item;
-    rand bit [7:0] data;
+    rand bit [31:0] addr;
+    rand bit [31:0] data;
     
     function new(string name = "my_txn");
         super.new(name);
@@ -60,54 +70,77 @@ class my_txn extends evm_sequence_item;
 endclass
 ```
 
-### 2. Monitor
+---
+
+## 5. Define a Monitor (use run_phase — not main_phase!)
+
 ```systemverilog
 class my_monitor extends evm_monitor#(virtual my_if, my_txn);
-    virtual task main_phase();
-        my_txn txn;
-        forever begin
-            txn = collect_from_interface();
-            analysis_port.write(txn);  // Broadcast!
-        end
+    virtual task run_phase();
+        super.run_phase();   // starts reset monitoring thread
+        if (vif == null) return;
+        fork
+            forever begin
+                if (in_reset) begin @(reset_deasserted); continue; end
+                // Wait for a transaction on the interface
+                @(posedge vif.clk iff (vif.valid && vif.ready));
+                my_txn t = new("t");
+                t.data = vif.data;
+                analysis_port.write(t);  // broadcast to scoreboard/predictor
+            end
+        join_none
     endtask
 endclass
 ```
 
-### 3. Driver
+**Why `run_phase()`?** Monitors must run continuously — even during `reset_phase`, `configure_phase`, and `shutdown_phase`. Using `main_phase()` would miss transactions at phase boundaries.
+
+---
+
+## 6. Define a Driver
+
 ```systemverilog
-class my_driver extends evm_driver#(virtual my_if, my_txn);
+class my_driver extends evm_driver#(virtual my_if);
     virtual task main_phase();
-        my_txn req;
+        super.main_phase();
         forever begin
+            if (in_reset) begin @(reset_deasserted); continue; end
             seq_item_port.get_next_item(req);
-            drive_to_interface(req);
+            @(posedge vif.clk);
+            vif.data  <= req.data;
+            vif.valid <= 1'b1;
+            @(posedge vif.clk iff vif.ready);
+            vif.valid <= 1'b0;
             seq_item_port.item_done();
         end
     endtask
+    
+    virtual task on_reset_assert();
+        super.on_reset_assert();
+        vif.valid <= 0;   // idle bus during reset
+    endtask
 endclass
 ```
 
-### 4. Scoreboard
-```systemverilog
-class my_scoreboard extends evm_scoreboard#(my_txn);
-    function new(string name, evm_component parent);
-        super.new(name, parent);
-        mode = EVM_SB_FIFO;  // FIFO checking
-    endfunction
-endclass
-```
+---
 
-### 5. Agent
+## 7. Define an Agent
+
 ```systemverilog
 class my_agent extends evm_component;
-    my_driver driver;
-    my_monitor monitor;
-    my_sequencer#(my_txn) sequencer;
+    my_driver                   driver;
+    my_monitor                  monitor;
+    evm_sequencer#(my_txn)      sequencer;
+    virtual my_if               vif;
+    
+    function new(string name, evm_component parent);
+        super.new(name, parent);
+    endfunction
     
     virtual function void build_phase();
         super.build_phase();
-        driver = new("driver", this);
-        monitor = new("monitor", this);
+        monitor   = new("monitor",   this);
+        driver    = new("driver",    this);
         sequencer = new("sequencer", this);
     endfunction
     
@@ -117,214 +150,157 @@ class my_agent extends evm_component;
             sequencer.seq_item_export.get_req_fifo(),
             sequencer.seq_item_export.get_rsp_fifo()
         );
-    endfunction
-endclass
-```
-
-### 6. Environment
-```systemverilog
-class my_env extends evm_component;
-    my_agent agent;
-    my_scoreboard sb;
-    
-    virtual function void build_phase();
-        super.build_phase();
-        agent = new("agent", this);
-        sb = new("sb", this);
+        if (vif != null) begin
+            driver.set_vif(vif);
+            monitor.set_vif(vif);
+        end
     endfunction
     
-    virtual function void connect_phase();
-        super.connect_phase();
-        agent.monitor.analysis_port.connect(sb.analysis_imp.get_mailbox());
+    function void set_vif(virtual my_if vif_handle);
+        this.vif = vif_handle;
+        if (driver  != null) driver.set_vif(vif_handle);
+        if (monitor != null) monitor.set_vif(vif_handle);
     endfunction
 endclass
 ```
 
 ---
 
-## 🔄 The 12 Phases
+## 8. Define an Environment
+
+```systemverilog
+class my_env extends evm_env;
+    my_agent           agent;
+    evm_scoreboard#(my_txn) scoreboard;
+    
+    virtual function void build_phase();
+        super.build_phase();   // auto-prints topology
+        agent      = new("agent",      this);
+        scoreboard = new("scoreboard", this);
+    endfunction
+    
+    virtual function void connect_phase();
+        super.connect_phase();
+        agent.monitor.analysis_port.connect(
+            scoreboard.analysis_imp.get_mailbox()
+        );
+    endfunction
+endclass
+```
+
+---
+
+## 9. Define a Test
 
 ```systemverilog
 class my_test extends evm_base_test;
-    // 1. Build
+    my_env env;
+    
+    function new(string name = "my_test");
+        super.new(name);
+    endfunction
+    
     virtual function void build_phase();
         super.build_phase();
+        evm_report_handler::set_verbosity(EVM_MEDIUM);
         env = new("env", this);
     endfunction
     
-    // 2. Connect
-    virtual function void connect_phase();
-        super.connect_phase();
-        // Make TLM connections
-    endfunction
-    
-    // 3. End of Elaboration
-    virtual function void end_of_elaboration_phase();
-        super.end_of_elaboration_phase();
-        print_topology();
-    endfunction
-    
-    // 4. Start of Simulation
-    virtual function void start_of_simulation_phase();
-        super.start_of_simulation_phase();
-    endfunction
-    
-    // 5. Reset
     virtual task reset_phase();
         super.reset_phase();
+        env.agent.set_vif(/* pass in VIF here */);
+        // drive reset...
     endtask
     
-    // 6. Configure
-    virtual task configure_phase();
-        super.configure_phase();
-    endtask
-    
-    // 7. Main (with objections!)
     virtual task main_phase();
         super.main_phase();
         raise_objection("test");
-        // Test code
+        
+        // Insert expected result into scoreboard
+        my_txn exp = new("exp");
+        exp.data = 32'hDEAD_BEEF;
+        env.scoreboard.insert_expected(exp);
+        
+        // Drive stimulus via sequencer
+        my_txn req = new("req");
+        req.data = 32'hDEAD_BEEF;
+        env.agent.sequencer.send_item(req);
+        
+        #1us;
         drop_objection("test");
     endtask
     
-    // 8. Shutdown
-    virtual task shutdown_phase();
-        super.shutdown_phase();
-    endtask
-    
-    // 9. Extract
-    virtual function void extract_phase();
-        super.extract_phase();
-    endfunction
-    
-    // 10. Check
-    virtual function void check_phase();
-        super.check_phase();
-    endfunction
-    
-    // 11. Report
     virtual function void report_phase();
-        super.report_phase();
-    endfunction
-    
-    // 12. Final
-    virtual function void final_phase();
-        super.final_phase();
-        evm_report_handler::print_summary();
+        super.report_phase();          // prints PASS/FAIL automatically
     endfunction
 endclass
 ```
 
-**ALWAYS call `super.phase()` first!**
-
 ---
 
-## 💡 Key Patterns
+## 10. tb_top.sv Template
 
-### Virtual Interface (No Config DB!)
 ```systemverilog
-// In test/env
-function void set_vif(virtual my_if vif);
-    agent.driver.set_vif(vif);
-    agent.monitor.set_vif(vif);
-endfunction
-
-// In testbench
-test.set_vif(my_vif);
-```
-
-### Monitor → Scoreboard
-```systemverilog
-// In environment connect_phase
-monitor.analysis_port.connect(scoreboard.analysis_imp.get_mailbox());
-
-// Monitor automatically broadcasts
-// Scoreboard automatically receives and checks
-```
-
-### Objections
-```systemverilog
-virtual task main_phase();
-    super.main_phase();
-    raise_objection("my_test");
+module tb_top;
+    import evm_pkg::*;
+    import my_pkg::*;
     
-    // Test runs here
+    // Clock and reset
+    logic clk = 0;
+    logic rst_n = 0;
+    always #5ns clk = ~clk;
+    initial begin #20ns rst_n = 1; end
     
-    drop_objection("my_test");
-endtask
+    // Interface
+    my_if dut_if(.clk(clk));
+    
+    // DUT
+    my_dut dut(
+        .clk(clk),
+        .rst_n(rst_n),
+        .data(dut_if.data),
+        .valid(dut_if.valid),
+        .ready(dut_if.ready)
+    );
+    
+    // Test execution
+    initial begin
+        my_test t = new("my_test");
+        t.env.agent.set_vif(dut_if);   // direct assignment — no config DB
+        evm_root::get().run_test(t);
+        $finish;
+    end
+    
+    // Or use +EVM_TESTNAME=my_test (after registering with EVM_REGISTER_TEST)
+    // initial begin
+    //     t.env.agent.set_vif(dut_if);
+    //     evm_root::get().run_test_by_name();
+    // end
+endmodule
 ```
 
 ---
 
-## 📚 Complete Examples
+## 11. Key Rules
 
-1. **examples/minimal_test/** - Simplest possible test
-2. **examples/full_phases_test/** - All 12 phases + agents
-3. **examples/complete_test/** - Monitor → Scoreboard flow
-
----
-
-## 📖 Documentation
-
-| Guide | Topic |
-|-------|-------|
-| **EVM_PHASING_GUIDE.md** | The 12 phases in detail |
-| **EVM_VIRTUAL_INTERFACE_GUIDE.md** | VIF usage (no config DB) |
-| **EVM_MONITOR_SCOREBOARD_GUIDE.md** | TLM communication |
-| **EVM_LOGGING_COMPLETE_GUIDE.md** | Reporting and logging |
+| Rule | Why |
+|---|---|
+| Always call `super.phase()` first | Chains phase execution to base class |
+| `raise_objection()` at start of `main_phase()` | Phase ends immediately without it |
+| Monitors use `run_phase()` not `main_phase()` | Continuous monitoring across all phases |
+| Set VIF before calling `run_test()` | VIF must be valid when build/connect run |
+| Check `in_reset` flag before driving | Prevents protocol violations during reset |
 
 ---
 
-## 🎯 EVM vs UVM Cheat Sheet
+## Quick Reference Links
 
-| Feature | UVM | EVM |
-|---------|-----|-----|
-| **Virtual Interface** | `uvm_config_db#(vif)::set()` | Direct `set_vif(vif)` |
-| **Factory** | `uvm_factory::create()` | Direct `new()` |
-| **Field Macros** | `` `uvm_field_int()`` | Manual `do_copy()` |
-| **Objections** | `uvm_objection` | Same: `raise/drop_objection()` |
-| **Phasing** | 13 phases | 12 phases (same concept) |
-| **TLM** | TLM 1.0 + 2.0 | TLM 1.0 (sufficient) |
-| **Reporting** | `uvm_report_*` | `log_info/error/etc` |
-| **Scoreboard** | Build your own | Built-in `evm_scoreboard` |
-
----
-
-## ⚡ Quick Tips
-
-1. **Always call super first:**
-   ```systemverilog
-   virtual function void build_phase();
-       super.build_phase();  // ← FIRST!
-       // Your code
-   endfunction
-   ```
-
-2. **Use objections in main_phase:**
-   ```systemverilog
-   raise_objection("name");
-   // stuff
-   drop_objection("name");
-   ```
-
-3. **Print topology to debug:**
-   ```systemverilog
-   virtual function void end_of_elaboration_phase();
-       super.end_of_elaboration_phase();
-       print_topology();
-   endfunction
-   ```
-
-4. **Enable file logging:**
-   ```systemverilog
-   evm_report_handler::enable_file_logging("test.log");
-   evm_report_handler::set_verbosity(EVM_MEDIUM);
-   ```
-
----
-
-## 🎉 You're Ready!
-
-Start with `examples/full_phases_test/` to see everything working together.
-
-**EVM = UVM simplicity for embedded verification!**
+| What you need | Document |
+|---|---|
+| Framework concepts | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
+| Protocol agents | [`AGENTS.md`](AGENTS.md) |
+| Register model / RAL | [`REGISTER_MODEL.md`](REGISTER_MODEL.md) |
+| Test registry, env, sequences | [`TEST_INFRASTRUCTURE.md`](TEST_INFRASTRUCTURE.md) |
+| Logging API, phase tips, VIF details, scoreboard | [`REFERENCE.md`](REFERENCE.md) |
+| UML class diagrams | [`../vkit/docs/uml/`](../vkit/docs/uml/) |
+| AI development guide | [`../CLAUDE.md`](../CLAUDE.md) |

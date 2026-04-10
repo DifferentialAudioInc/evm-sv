@@ -9,7 +9,7 @@
 // Description: Parameterized base agent class for EVM
 //              Contains monitor and optional driver with virtual interfaces
 //              No config database - direct virtual interface assignment
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 //==============================================================================
 

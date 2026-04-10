@@ -7,7 +7,7 @@
 //==============================================================================
 // Class: evm_gpio_cfg
 // Description: Configuration for GPIO agent
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

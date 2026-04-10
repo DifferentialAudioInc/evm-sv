@@ -8,7 +8,7 @@
 // Class: evm_adc_monitor
 // Description: ADC monitor for EVM
 //              Monitors ADC outputs for verification
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-05
 //==============================================================================
 

@@ -10,7 +10,7 @@
 //              Supports two modes:
 //              1. File-based: Load entire stimulus file at start
 //              2. Buffered: Dynamically generate buffers via Python script
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-07
 //==============================================================================
 

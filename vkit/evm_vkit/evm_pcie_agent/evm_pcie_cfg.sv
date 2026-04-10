@@ -7,7 +7,7 @@
 //==============================================================================
 // Class: evm_pcie_cfg
 // Description: Lightweight configuration class for PCIe agent
-// Author: Engineering Team
+// Author: Eric Dyer
 // Date: 2026-03-06
 //==============================================================================
 
