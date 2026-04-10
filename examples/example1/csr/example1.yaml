@@ -1,0 +1,72 @@
+# CSR Definitions: AXI Data Transform DUT
+# EVM Example: demonstrates full CSR → RTL → DV workflow
+# Author: Eric Dyer (Differential Audio Inc.)
+
+---
+modules:
+  - name: axi_data_xform
+    base_address: 0x00000000
+    description: AXI Data Transform DUT registers
+
+    registers:
+
+      - name: CTRL
+        offset: 0x0000
+        access: RW
+        reset: 0x00000000
+        description: Control register
+        fields:
+          - name: ENABLE
+            bits: [0]
+            description: Enable transform engine (1=enabled)
+          - name: XFORM_SEL
+            bits: [2, 1]
+            description: |
+              Transform select:
+                0 = passthrough  (result = data)
+                1 = invert       (result = ~data)
+                2 = byte_swap    (result = {d[7:0],d[15:8],d[23:16],d[31:24]})
+                3 = bit_reverse  (result = data bit-reversed)
+
+      - name: DATA_IN
+        offset: 0x0004
+        access: RW
+        reset: 0x00000000
+        description: Input data register. Writing triggers transform when ENABLE=1.
+        fields:
+          - name: DATA
+            bits: [31, 0]
+            description: Input data value
+
+      - name: STATUS
+        offset: 0x0008
+        access: RO
+        reset: 0x00000000
+        description: Status register (hardware driven)
+        fields:
+          - name: BUSY
+            bits: [0]
+            description: Transform in progress
+          - name: DONE
+            bits: [1]
+            description: Last transform complete
+
+      - name: RESULT
+        offset: 0x000C
+        access: RO
+        reset: 0x00000000
+        description: Transform result (hardware driven, valid when STATUS.DONE=1)
+        fields:
+          - name: DATA
+            bits: [31, 0]
+            description: Transform result value
+
+      - name: GPIO_OUT
+        offset: 0x0010
+        access: RW
+        reset: 0x00000000
+        description: GPIO output register. Drives gpio_out[7:0] pins directly.
+        fields:
+          - name: GPIO
+            bits: [7, 0]
+            description: GPIO output value (8-bit, drives physical pins)
