@@ -1,427 +1,170 @@
-# EVM - Embedded Verification Methodology
+# EVM — Embedded Verification Methodology
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![AI-First Development](https://img.shields.io/badge/Development-AI--First-blue)](CLAUDE.md)
 
-**A lightweight SystemVerilog verification framework designed for embedded FPGA/ASIC projects**
+**A lightweight SystemVerilog verification framework for embedded FPGA/ASIC IP verification**
 
-🤖 **AI-First Development:** This project is designed to be developed primarily with Claude and other agentic AI assistants. See [AI_DEVELOPMENT.md](AI_DEVELOPMENT.md) for details.
-
-**Developed by:** [Differential Audio Inc](https://github.com/DifferentialAudioInc)  
+**Author:** Eric Dyer — [Differential Audio Inc.](https://github.com/DifferentialAudioInc)  
 **License:** MIT
 
 ---
 
-## 🎯 What is EVM?
+## What is EVM?
 
-EVM (Embedded Verification Methodology) is a **lightweight alternative to UVM** providing:
+EVM (Embedded Verification Methodology) is a production-ready alternative to UVM optimized for embedded ASIC/FPGA IP verification. It delivers the verification patterns engineers actually use — without the UVM overhead that slows small-to-medium teams down.
 
-✅ **80% of UVM's utility with 20% of its complexity**  
-✅ **Dual verification models** - Transaction-based AND Streaming-based  
-✅ **Python integration** for DSP/RF workflows  
-✅ **CSR Generator** - YAML to SystemVerilog/C  
-✅ **Learning curve < 1 week** (vs weeks for UVM)  
-✅ **~5,000 LOC** (vs ~50,000 for UVM)
-
-### Why EVM Instead of UVM?
-
-| Feature | UVM | EVM | Winner |
-|---------|-----|-----|--------|
-| **Learning Curve** | Weeks | Days | EVM ✅ |
-| **Code Size** | ~50K LOC | ~5K LOC | EVM ✅ |
-| **Compilation** | Minutes | Seconds | EVM ✅ |
-| **Streaming Model** | ❌ | ✅ | EVM ✅ |
-| **Python Integration** | Complex (DPI) | Simple (files) | EVM ✅ |
-| **Enterprise Features** | ✅ Full | ⚠️ Essential | UVM |
-| **Best For** | Large teams, ASIC | Small teams, FPGA/ASIC | Depends |
-
-**See [docs/UVM_vs_EVM_ANALYSIS.md](docs/UVM_vs_EVM_ANALYSIS.md) for detailed comparison**
+| | UVM | EVM |
+|---|---|---|
+| **Learning curve** | Weeks | Days |
+| **Framework size** | ~50K LOC | ~8K LOC |
+| **Compilation** | Minutes | Seconds |
+| **Factory / Config DB** | Required | Not needed (direct is better) |
+| **AXI4 Full burst agent** | Build yourself | ✅ Included |
+| **RAL with auto-predictor** | uvm_reg (complex) | ✅ evm_reg_map + predictor |
+| **Test registry (+TESTNAME)** | uvm_factory | ✅ +EVM_TESTNAME |
+| **Best for** | Large ASIC teams | Small-medium ASIC/FPGA teams |
 
 ---
 
-## 🚀 Quick Start
+## Key Features
 
-### For New Users
+### Core Framework
+- **12-phase execution model** — build → connect → reset → configure → main → shutdown → check
+- **Parallel `run_phase()`** — monitors and scoreboards run continuously across all phases (no missed transactions)
+- **Mid-simulation reset** — every component has built-in `assert_reset()` / `on_reset_assert()` hooks
+- **Quiescence Counter** — unique EVM feature: automatic test completion detection, no manual objection management needed
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/DifferentialAudioInc/evm-sv.git
-   cd evm-sv
-   ```
+### Protocol Agents (VKit)
+- **AXI4-Lite Master** — write/read/rmw/poll, 7 analysis ports (channel + composite), optional sequencer, RAL predictor ready
+- **AXI4 Full Master** — burst write/read (INCR/FIXED/WRAP), WLAST/RLAST tracking, 7 analysis ports, active/passive modes
+- **ADC/DAC streaming** — file-based Python integration
+- Clock, Reset, GPIO, PCIe agents included
 
-2. **Try the example:**
-   ```bash
-   cd examples/simple_counter/sim
-   
-   # Launch Vivado and run in Tcl console:
-   cd c:/evm/evm-sv/examples/simple_counter/sim
-   source create_vivado_project.tcl
-   ```
+### Register Model (RAL)
+- **`evm_reg_field`** → **`evm_reg`** → **`evm_reg_block`** → **`evm_reg_map`** → **`evm_reg_predictor`**
+- **CSR Generator** (`csr_gen/gen_csr.py`) — YAML → RTL + C header + EVM RAL model in one command
+- Auto-predictor: connect monitor's `ap_write` port → predictor → mirror auto-updates on every observed write
 
-3. **Read the documentation:**
-   - 📖 [CLAUDE.md](CLAUDE.md) - **Development rules and guidelines**
-   - 📖 [AI_DEVELOPMENT.md](AI_DEVELOPMENT.md) - **How to develop with AI**
-   - 📖 [examples/simple_counter/README.md](examples/simple_counter/README.md) - **Complete example**
-
-### For AI Assistants
-
-**🤖 Primary Reference:** [CLAUDE.md](CLAUDE.md) contains all development rules, coding standards, and architectural decisions.
-
-**Key Context:**
-- EVM is a **lightweight subset** of UVM (not a full replacement)
-- Uses **12-phase methodology** for test execution
-- Supports **dual models**: Transaction-based AND Streaming-based verification
-- **Priority 1 features** to implement: Factory, Config DB, TLM ports
-- **Keep it lightweight** - simplicity over complexity
+### Test Infrastructure
+- **`evm_env`** — environment base class with auto topology print
+- **Test registry** — `EVM_REGISTER_TEST(my_test)` + `+EVM_TESTNAME=my_test` = run any test without recompiling
+- **Sequence library** — `EVM_REGISTER_SEQUENCE(my_seq)` + `+EVM_SEQ=my_seq` = runtime sequence selection
 
 ---
 
-## 📁 Project Structure
+## Quick Start
+
+```systemverilog
+// Minimal test
+import evm_pkg::*;
+
+class my_test extends evm_base_test;
+    function new(string name = "my_test");
+        super.new(name);
+    endfunction
+    
+    virtual task main_phase();
+        super.main_phase();
+        raise_objection("test");    // ← required or phase ends immediately
+        #1us;
+        drop_objection("test");
+    endtask
+endclass
+
+// tb_top.sv
+initial begin
+    my_test t = new("my_test");
+    evm_root::get().run_test(t);
+    $finish;
+end
+```
+
+For a full build-up (transaction → monitor → driver → agent → env → test → tb_top), see **[docs/QUICK_START.md](docs/QUICK_START.md)**.
+
+---
+
+## Documentation
+
+### `evm-sv/docs/` — User Reference
+
+| Document | Contents |
+|---|---|
+| [QUICK_START.md](docs/QUICK_START.md) | Complete testbench build-up step by step |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | 12 phases, run_phase, mid-sim reset, TLM, VIF |
+| [AGENTS.md](docs/AGENTS.md) | All protocol agents: AXI-Lite, AXI4 Full, ADC/DAC/GPIO/CLK/RST |
+| [REGISTER_MODEL.md](docs/REGISTER_MODEL.md) | RAL: reg_map, predictor, CSR generator |
+| [TEST_INFRASTRUCTURE.md](docs/TEST_INFRASTRUCTURE.md) | evm_env, test registry, sequence library |
+| [REFERENCE.md](docs/REFERENCE.md) | Logging API, per-phase DO/DON'T, VIF+clocking blocks, scoreboard |
+| [UVM_FEATURES_NOT_IMPLEMENTED.md](docs/UVM_FEATURES_NOT_IMPLEMENTED.md) | Why EVM intentionally omits certain UVM features |
+
+### `evm-sv/vkit/docs/uml/` — Mermaid Class Diagrams
+
+All diagrams render on GitHub and in VS Code (with Mermaid Preview extension).
+
+| Diagram | Contents |
+|---|---|
+| [01_core_framework.md](vkit/docs/uml/01_core_framework.md) | Object/component hierarchy, phases, reset events, QC, test registry |
+| [02_register_model.md](vkit/docs/uml/02_register_model.md) | RAL classes, reg_map, predictor, CSR generator flow |
+| [03_utilities.md](vkit/docs/uml/03_utilities.md) | Scoreboard (3 modes), memory model, sequence library |
+| [04_agents_axi_lite.md](vkit/docs/uml/04_agents_axi_lite.md) | AXI-Lite agent, 7 analysis ports, transaction types |
+| [05_agents_axi4_full.md](vkit/docs/uml/05_agents_axi4_full.md) | AXI4 Full burst agent, burst sequence diagram |
+| [06_tlm_sequences.md](vkit/docs/uml/06_tlm_sequences.md) | TLM ports, analysis broadcast, driver↔sequencer |
+
+---
+
+## Project Structure
 
 ```
 evm-sv/
-├── CLAUDE.md                   # 🤖 AI Development Rules (PRIMARY REFERENCE)
-├── AI_DEVELOPMENT.md           # Guide for AI-assisted development
-├── README.md                   # This file
-├── CONTRIBUTING.md             # Contribution guidelines
+├── CLAUDE.md                 # AI development guide (start here for AI sessions)
+├── NEXT_STEPS.md             # What's complete + NIC example project roadmap
 │
-├── csr_gen/                    # CSR Generator Tool
-│   ├── gen_csr.py             # YAML → SystemVerilog/C
-│   ├── README.md              # Tool documentation
-│   └── example/               # Working examples
+├── vkit/src/                 # Core EVM library (evm_pkg)
+│   ├── evm_component.sv      # 12-phase + run_phase + reset events
+│   ├── evm_monitor.sv        # run_phase continuous monitoring
+│   ├── evm_driver.sv         # main_phase stimulus + reset handling
+│   ├── evm_sequencer.sv      # sequence dispatch + reset flush
+│   ├── evm_scoreboard.sv     # 3 matching modes (FIFO/Assoc/Unordered)
+│   ├── evm_reg_map.sv        # address map for multiple reg blocks
+│   ├── evm_reg_predictor.sv  # parameterized RAL predictor base
+│   ├── evm_env.sv            # environment base (auto topology print)
+│   ├── evm_test_registry.sv  # +EVM_TESTNAME test selection
+│   ├── evm_sequence_library.sv # named sequence registry
+│   └── ... (30+ source files)
 │
-├── python/                     # Python Utilities
-│   ├── gen_stimulus.py        # Stimulus generation
-│   └── analyze_spectrum.py   # Spectrum analysis
+├── vkit/evm_vkit/            # Protocol agents (evm_vkit_pkg)
+│   ├── evm_axi_lite_agent/   # AXI4-Lite: 7 analysis ports, optional sequencer
+│   ├── evm_axi4_full_agent/  # AXI4 Full: burst read/write, 7 analysis ports
+│   └── (clk, rst, adc, dac, gpio, pcie agents)
 │
-├── vkit/                       # SystemVerilog Framework
-│   ├── src/                   # Base classes (evm_pkg)
-│   │   ├── evm_pkg.sv
-│   │   ├── evm_object.sv
-│   │   ├── evm_component.sv
-│   │   ├── evm_agent.sv
-│   │   ├── evm_driver.sv
-│   │   └── ... (see CLAUDE.md for full list)
-│   │
-│   └── docs/                  # Documentation
-│       ├── UVM_vs_EVM_ANALYSIS.md      # Detailed UVM comparison
-│       ├── EVM_PHASING_GUIDE.md        # 12-phase methodology
-│       └── EVM_CRITICAL_FEATURES_ANALYSIS.md
+├── csr_gen/                  # CSR Generator
+│   └── gen_csr.py            # YAML → RTL + C header + EVM RAL model
 │
-├── examples/                   # Working Examples
-│   └── simple_counter/        # Complete testbench example
-│       ├── README.md          # Example documentation
-│       ├── QUICKSTART.md      # How to run
-│       ├── GUI_GUIDE.md       # Vivado GUI guide
-│       ├── rtl/               # DUT
-│       ├── tb/                # Testbench
-│       └── sim/               # Simulation scripts
-│
-└── docs/                       # Additional Documentation
-    ├── UVM_vs_EVM_ANALYSIS.md
-    ├── EVM_PHASING_GUIDE.md
-    └── EVM_CRITICAL_FEATURES_ANALYSIS.md
+└── docs/                     # Documentation (see table above)
 ```
 
 ---
 
-## ✨ Key Features
+## AI-First Development
 
-### 1. Dual Verification Models
+EVM is designed for AI-assisted development. The documentation is structured for both human and AI consumption:
 
-**Transaction-Based (like UVM):**
-```systemverilog
-class my_sequence extends evm_sequence;
-    task body();
-        my_item item = new("item");
-        item.randomize();
-        send_item(item);
-    endtask
-endclass
-```
+- **`CLAUDE.md`** — primary AI session reference: complete class list, file locations, coding standards
+- **`docs/`** — human + AI readable reference documents
+- **`vkit/docs/uml/`** — Mermaid diagrams for visual architecture understanding
 
-**Streaming-Based (unique to EVM):**
-```systemverilog
-class stream_driver extends evm_stream_driver;
-    task main_phase();
-        load_stimulus("stimulus.txt");  // Python-generated
-        stream_data();
-    endtask
-endclass
-```
-
-### 2. CSR Generator
-
-Generate RTL and C headers from YAML:
-
-```yaml
-# my_regs.yaml
-registers:
-  - name: CONTROL
-    offset: 0x00
-    fields:
-      - name: ENABLE
-        bits: [0]
-        reset: 0
-```
-
-```bash
-python csr_gen/gen_csr.py my_regs.yaml output/
-```
-
-### 3. Python Integration
-
-```python
-# Generate stimulus
-python gen_stimulus.py --type sine --freq 1000 --fs 48000 -o stim.txt
-
-# Analyze results
-python analyze_spectrum.py capture.txt --fs 48000 --plot
-```
-
-### 4. Phase-Based Testbench
-
-```systemverilog
-class my_test extends evm_base_test;
-    function void build_phase();
-        // Create agents
-    endfunction
-    
-    task reset_phase();
-        // Apply reset
-    endtask
-    
-    task main_phase();
-        raise_objection("test");
-        // Run test
-        drop_objection("test");
-    endtask
-    
-    function void check_phase();
-        // Verify results
-    endfunction
-endclass
-```
+To start an AI session: read `CLAUDE.md` first, then reference the specific docs needed for the task.
 
 ---
 
-## 🤖 AI-First Development
+## What's Next
 
-### Why AI-First?
-
-This project is designed from the ground up to be developed with AI assistants:
-
-✅ **Comprehensive documentation** optimized for AI context  
-✅ **[CLAUDE.md](CLAUDE.md)** - Single source of truth for development rules  
-✅ **Clear coding standards** and anti-patterns  
-✅ **UVM comparison** for informed feature decisions  
-✅ **Examples** demonstrating best practices  
-
-### How to Develop with AI
-
-1. **Read [CLAUDE.md](CLAUDE.md)** - All rules and guidelines in one place
-2. **Use [AI_DEVELOPMENT.md](AI_DEVELOPMENT.md)** - Workflow and prompts
-3. **Reference examples** - `examples/simple_counter/`
-4. **Check UVM comparison** - `docs/UVM_vs_EVM_ANALYSIS.md`
-
-### Prompts for Common Tasks
-
-**Adding a new feature:**
-```
-I want to add [feature] to EVM. 
-Please check CLAUDE.md section 3.1.2 for feature priorities.
-Is this Priority 1, 2, or 3? Then implement accordingly.
-```
-
-**Refactoring code:**
-```
-Please refactor [file] following CLAUDE.md section 6 coding standards.
-Keep it lightweight per section 3.1.1 - EVM should be simpler than UVM.
-```
-
-**Creating new agent:**
-```
-Create a new agent for [protocol] following the agent pattern 
-in CLAUDE.md section 11.1. Make it generic and configurable.
-```
+The NIC example project — a complete TX NIC DUT + full EVM verification environment demonstrating the entire framework in a realistic IP scenario. See [NEXT_STEPS.md](NEXT_STEPS.md).
 
 ---
 
-## 📖 Documentation
+## License
 
-### Primary References
-
-| Document | Purpose | Audience |
-|----------|---------|----------|
-| **[CLAUDE.md](CLAUDE.md)** | Development rules, coding standards | AI Assistants, Developers |
-| **[AI_DEVELOPMENT.md](AI_DEVELOPMENT.md)** | AI collaboration workflow | Users working with AI |
-| **[CONTRIBUTING.md](CONTRIBUTING.md)** | Contribution guidelines | Contributors |
-
-### Technical Documentation
-
-| Document | Purpose |
-|----------|---------|
-| [docs/UVM_vs_EVM_ANALYSIS.md](docs/UVM_vs_EVM_ANALYSIS.md) | Detailed UVM comparison, feature gaps |
-| [docs/EVM_PHASING_GUIDE.md](docs/EVM_PHASING_GUIDE.md) | 12-phase methodology |
-| [docs/EVM_CRITICAL_FEATURES_ANALYSIS.md](docs/EVM_CRITICAL_FEATURES_ANALYSIS.md) | Feature roadmap |
-
-### Examples
-
-| Example | Description |
-|---------|-------------|
-| [examples/simple_counter/](examples/simple_counter/) | Complete testbench with all phases |
-| [examples/simple_counter/QUICKSTART.md](examples/simple_counter/QUICKSTART.md) | How to run simulation |
-| [examples/simple_counter/GUI_GUIDE.md](examples/simple_counter/GUI_GUIDE.md) | Vivado GUI workflow |
-
----
-
-## 🏗️ Current Status (March 2026)
-
-### ✅ PRODUCTION READY - 100% Complete!
-
-**All critical features implemented as of March 29, 2026:**
-
-- ✅ Core framework (evm_pkg) - All base classes
-- ✅ 12-phase methodology with objections
-- ✅ TLM 1.0 infrastructure (analysis_port, seq_item_port)
-- ✅ Complete component library (monitor, driver, sequencer, agent)
-- ✅ Scoreboard with 3 comparison modes
-- ✅ Sequence/transaction infrastructure
-- ✅ Comprehensive logging and reporting
-- ✅ Quiescence counter (unique to EVM!)
-- ✅ Command-line plusargs support
-- ✅ Coverage framework wrapper
-- ✅ Assertion infrastructure
-- ✅ Virtual sequence support
-- ✅ Multiple working examples
-- ✅ Comprehensive documentation
-- ✅ Vivado integration with TCL automation
-- ✅ Multi-simulator support (VCS/Questa/Xcelium/Vivado)
-
-### 🎯 Optional Future Enhancements
-
-**Note:** Core framework is complete. These are optional additions:
-
-- 🟢 **Protocol Agents** (AXI4-Lite, AXI4-Stream, SPI, I2C, UART)
-- 🟢 **Additional Examples** (Multi-agent, Coverage, Assertions)
-- 🟢 **Developer Tools** (Build scripts, test templates)
-- 🟢 **CI/CD Integration** (GitHub Actions, regression)
-
-### ❌ Intentionally NOT Implemented
-
-**EVM's value is simplicity - we deliberately skip:**
-
-- ❌ Factory Pattern (direct instantiation is clearer)
-- ❌ Config Database (direct VIF assignment is simpler)
-- ❌ Full RAL (CSR generator is sufficient)
-- ❌ Callbacks (adds complexity)
-- ❌ TLM 2.0 (TLM 1.0 is enough)
-- ❌ Field macros (explicit code is better)
-
-**See [NEXT_STEPS.md](NEXT_STEPS.md) for optional enhancement roadmap**
-
----
-
-## 💡 Getting Help
-
-### For Users
-
-1. **Check documentation:**
-   - Start with [examples/simple_counter/README.md](examples/simple_counter/README.md)
-   - Read [docs/EVM_PHASING_GUIDE.md](docs/EVM_PHASING_GUIDE.md)
-   
-2. **Ask AI assistant:**
-   - Claude, ChatGPT, etc. can read [CLAUDE.md](CLAUDE.md)
-   - Example: "Explain how EVM phases work using CLAUDE.md"
-
-3. **Open an issue:**
-   - GitHub Issues for bugs or questions
-
-### For AI Assistants
-
-**You have access to comprehensive documentation:**
-
-1. **[CLAUDE.md](CLAUDE.md)** - Start here, contains everything
-2. **[docs/UVM_vs_EVM_ANALYSIS.md](docs/UVM_vs_EVM_ANALYSIS.md)** - For UVM feature questions
-3. **[examples/](examples/)** - For implementation patterns
-
-**Remember:**
-- EVM is **lightweight** - don't over-engineer
-- Check **Priority levels** before adding features
-- Follow **coding standards** in CLAUDE.md Section 6
-- Keep **constructors minimal**
-- Always **call super.method()** first
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! This project uses an **AI-first development approach**.
-
-### Contribution Workflow
-
-1. **Read [CLAUDE.md](CLAUDE.md)** to understand the project
-2. **Read [AI_DEVELOPMENT.md](AI_DEVELOPMENT.md)** for workflow
-3. **Fork and create a branch**
-4. **Use AI assistant** to help implement changes
-5. **Ensure documentation is updated**
-6. **Submit pull request**
-
-### Guidelines
-
-- ✅ **DO** use AI assistants (Claude, ChatGPT, etc.)
-- ✅ **DO** follow [CLAUDE.md](CLAUDE.md) coding standards
-- ✅ **DO** check Priority levels before adding features
-- ✅ **DO** update documentation with code changes
-- ❌ **DON'T** add complex UVM features (keep it lightweight)
-- ❌ **DON'T** break existing examples
-- ❌ **DON'T** add features without updating CLAUDE.md
-
-**See [CONTRIBUTING.md](CONTRIBUTING.md) for details**
-
----
-
-## 📊 Success Metrics
-
-EVM is successful because:
-
-✅ **Learning curve < 1 week** (vs weeks for UVM)  
-✅ **Code size < 10K LOC** (vs 50K for UVM)  
-✅ **Compilation < 5 seconds** (vs minutes for UVM)  
-✅ **Streaming model** (not in UVM)  
-✅ **Python integration** (simpler than UVM)  
-✅ **AI-friendly documentation**  
-
----
-
-## 📜 License
-
-**MIT License** - See [LICENSE](LICENSE) file
-
-Copyright (c) 2026 Differential Audio Inc
-
----
-
-## 🏢 About Differential Audio Inc
-
-Differential Audio Inc develops advanced audio and signal processing solutions for professional and embedded applications. This verification framework was developed to support our internal FPGA/ASIC workflows and is now available as open source.
-
-**This project demonstrates our AI-first development philosophy.**
-
----
-
-## 🔗 Quick Links
-
-- 📖 **[CLAUDE.md](CLAUDE.md)** - AI Development Rules
-- 🤖 **[AI_DEVELOPMENT.md](AI_DEVELOPMENT.md)** - AI Workflow Guide
-- 📝 **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution Guidelines
-- 📚 **[docs/](docs/)** - Technical Documentation
-- 💡 **[examples/](examples/)** - Working Examples
-- 🐛 **[Issues](https://github.com/DifferentialAudioInc/evm-sv/issues)** - Bug Reports
-
----
-
-**Version:** 1.0.0  
-**Status:** ✅ Production Ready (100% Complete)  
-**Development Model:** AI-First 🤖  
-**Last Updated:** 2026-03-30
+**MIT License** — See [LICENSE](LICENSE)  
+Copyright (c) 2026 Eric Dyer / Differential Audio Inc.
