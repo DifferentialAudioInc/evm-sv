@@ -1,8 +1,8 @@
 /*============================================================================*/
 /* File: axi_data_xform_csr.h
  * Description: CSR definitions for AXI Data Transform DUT registers
- * Generated: 2026-04-10 00:05:08
- * Source: c:\evm\evm-sv\examples\axi_data_xform\rtl\axi_data_xform_csr.yaml
+ * Generated: 2026-04-10 15:26:15
+ * Source: c:\evm\evm-sv\examples\example1\csr\example1.yaml
  */
 /*============================================================================*/
 
@@ -32,12 +32,7 @@
 typedef union {
     struct {
         uint32_t enable               :  1;  /* Enable transform engine (1=enabled) */
-        uint32_t xform_sel            :  2;  /* Transform select:
-  0 = passthrough  (result = data)
-  1 = invert       (result = ~data)
-  2 = byte_swap    (result = {d[7:0],d[15:8],d[23:16],d[31:24]})
-  3 = bit_reverse  (result = data bit-reversed)
- */
+        uint32_t xform_sel            :  2;  /* Transform select: 0=passthrough 1=invert 2=byte_swap 3=bit_reverse */
     } fields;
     uint32_t raw;
 } axi_data_xform_ctrl_t;

@@ -1,5 +1,5 @@
 # CSR Definitions: AXI Data Transform DUT
-# EVM Example: demonstrates full CSR → RTL → DV workflow
+# EVM Example: demonstrates full CSR generator → RTL → DV workflow
 # Author: Eric Dyer (Differential Audio Inc.)
 
 ---
@@ -21,12 +21,7 @@ modules:
             description: Enable transform engine (1=enabled)
           - name: XFORM_SEL
             bits: [2, 1]
-            description: |
-              Transform select:
-                0 = passthrough  (result = data)
-                1 = invert       (result = ~data)
-                2 = byte_swap    (result = {d[7:0],d[15:8],d[23:16],d[31:24]})
-                3 = bit_reverse  (result = data bit-reversed)
+            description: "Transform select: 0=passthrough 1=invert 2=byte_swap 3=bit_reverse"
 
       - name: DATA_IN
         offset: 0x0004

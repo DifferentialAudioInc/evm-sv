@@ -97,7 +97,16 @@ virtual class evm_log;
     
     // Set global verbosity (delegates to evm_report_handler)
     static function void set_global_verbosity(int verb);
-        evm_report_handler::set_verbosity(verb);
+        // Use case to select package-level enum values, avoiding enum type mismatch
+        case (verb)
+            0:       evm_report_handler::set_verbosity(EVM_NONE);
+            100:     evm_report_handler::set_verbosity(EVM_LOW);
+            200:     evm_report_handler::set_verbosity(EVM_MEDIUM);
+            300:     evm_report_handler::set_verbosity(EVM_HIGH);
+            400:     evm_report_handler::set_verbosity(EVM_FULL);
+            500:     evm_report_handler::set_verbosity(EVM_DEBUG);
+            default: evm_report_handler::set_verbosity(EVM_MEDIUM);
+        endcase
     endfunction
     
     // Set instance verbosity

@@ -23,10 +23,21 @@ virtual class example1_base_test extends evm_base_test;
         evm_report_handler::set_verbosity(EVM_MEDIUM);
         env = new("env", this);
         env.cfg = cfg;
-        env.slave_vif  = slave_vif;
+        env.slave_vif  = slave_vif;   // set VIF before build_phase so agents can use it
         env.master_vif = master_vif;
+        // EVM doesn't auto-cascade phases — call env.build_phase() explicitly
+        env.build_phase();
         log_info($sformatf("Test: %s", test_name), EVM_LOW);
         log_info(cfg.convert2string(), EVM_MEDIUM);
+    endfunction
+    
+    //==========================================================================
+    // Connect Phase — propagate to env so agents get their VIFs
+    // EVM runner calls test.connect_phase() but doesn't auto-cascade to env
+    //==========================================================================
+    virtual function void connect_phase();
+        super.connect_phase();
+        if (env != null) env.connect_phase();
     endfunction
     
     virtual task reset_phase();
@@ -38,8 +49,9 @@ virtual class example1_base_test extends evm_base_test;
     endtask
     
     virtual task configure_phase();
-        super.configure_phase();
+        // Declarations before any statements — Vivado xvlog requires this
         logic [1:0] resp;
+        super.configure_phase();
         log_info("Configure: CTRL.ENABLE=1", EVM_LOW);
         env.csr_agent.write(
             32'h0000_0000,

@@ -212,23 +212,23 @@ class evm_seq_item_pull_port #(type REQ = int, type RSP = REQ);
     // Try next item - Non-blocking
     //==========================================================================
     task try_next_item(output REQ req);
+        // Initialize to default (Vivado: avoid 'null' directly with parameterized types)
+        automatic REQ _no_item = null;
+        req = _no_item;
         if (!m_connected) begin
             if (m_parent != null) begin
                 m_parent.log_error("seq_item_port not connected");
             end
-            req = null;
             return;
         end
         
-        if (!m_req_fifo.try_get(req)) begin
-            req = null;
-        end
+        void'(m_req_fifo.try_get(req));  // req stays null if nothing available
     endtask
     
     //==========================================================================
     // Item done - Signal completion and optionally send response
     //==========================================================================
-    task item_done(input RSP rsp = null);
+    task item_done(input RSP rsp = RSP'(0));  // avoid null default in parameterized context
         if (!m_connected) begin
             if (m_parent != null) begin
                 m_parent.log_error("seq_item_port not connected");
@@ -250,11 +250,12 @@ class evm_seq_item_pull_port #(type REQ = int, type RSP = REQ);
     // Peek - Look at next item without removing
     //==========================================================================
     task peek(output REQ req);
+        automatic REQ _no_item = null;
+        req = _no_item;  // default initialization
         if (!m_connected) begin
             if (m_parent != null) begin
                 m_parent.log_error("seq_item_port not connected");
             end
-            req = null;
             return;
         end
         

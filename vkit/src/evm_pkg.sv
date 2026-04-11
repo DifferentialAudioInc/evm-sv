@@ -12,12 +12,15 @@
 // Date: 2026-03-06
 // Updated: 2026-04-09 - Added evm_env, evm_test_registry, evm_sequence_library,
 //                       evm_reg_map, evm_reg_predictor
+// Updated: 2026-04-10 - Reordered for Vivado xvlog compatibility:
+//                       evm_qc moved after evm_root (evm_root forward ref fix)
+//                       Streaming files excluded (add separately if needed)
 //==============================================================================
 
 package evm_pkg;
     
     //--------------------------------------------------------------------------
-    // Core infrastructure (report handler must come first - others depend on it)
+    // Core infrastructure (report handler must come first)
     //--------------------------------------------------------------------------
     `include "evm_report_handler.sv"
     `include "evm_log.sv"
@@ -35,7 +38,7 @@ package evm_pkg;
     `include "evm_tlm.sv"
     
     //--------------------------------------------------------------------------
-    // Sequence infrastructure (before agents/sequencer that reference them)
+    // Sequence infrastructure
     //--------------------------------------------------------------------------
     `include "evm_sequence_item.sv"
     `include "evm_csr_item.sv"
@@ -51,17 +54,16 @@ package evm_pkg;
     `include "evm_agent.sv"
     
     //--------------------------------------------------------------------------
-    // Register model (lightweight RAL)
-    // Order: field → reg → block → map → predictor
+    // Register model (RAL): field → reg → block → map → predictor
     //--------------------------------------------------------------------------
     `include "evm_reg_field.sv"
     `include "evm_reg.sv"
     `include "evm_reg_block.sv"
-    `include "evm_reg_map.sv"         // NEW: address map (multiple blocks)
-    `include "evm_reg_predictor.sv"   // NEW: auto-update mirror from bus traffic
+    `include "evm_reg_map.sv"
+    `include "evm_reg_predictor.sv"
     
     //--------------------------------------------------------------------------
-    // Streaming components
+    // Streaming components (Vivado xvlog compatibility fixed 2026-04-10)
     //--------------------------------------------------------------------------
     `include "evm_stream_cfg.sv"
     `include "evm_stream_driver.sv"
@@ -72,11 +74,6 @@ package evm_pkg;
     // Memory model
     //--------------------------------------------------------------------------
     `include "evm_memory_model.sv"
-    
-    //--------------------------------------------------------------------------
-    // Quiescence counter (activity watchdog)
-    //--------------------------------------------------------------------------
-    `include "evm_qc.sv"
     
     //--------------------------------------------------------------------------
     // Scoreboard
@@ -90,22 +87,28 @@ package evm_pkg;
     `include "evm_assertions.sv"
     
     //--------------------------------------------------------------------------
-    // Virtual sequences and sequence library
-    //--------------------------------------------------------------------------
-    `include "evm_virtual_sequence.sv"
-    `include "evm_sequence_library.sv"  // NEW: named sequence registry + runner
-    
-    //--------------------------------------------------------------------------
     // Environment base class
     //--------------------------------------------------------------------------
-    `include "evm_env.sv"               // NEW: env layer between test and agents
+    `include "evm_env.sv"
     
     //--------------------------------------------------------------------------
     // Test infrastructure
-    // Order: root → base_test → test_registry (registry needs base_test defined)
+    // ORDER MATTERS for Vivado xvlog:
+    //   evm_root must come before evm_qc (qc uses evm_root::get())
+    //   evm_root must come before evm_virtual_sequence (vseq uses evm_root::get())
+    //   evm_base_test must come before evm_test_registry (registry uses base_test)
+    //   evm_qc must come after evm_root but before evm_base_test (base_test uses qc)
     //--------------------------------------------------------------------------
     `include "evm_root.sv"
+    `include "evm_qc.sv"
+    
+    //--------------------------------------------------------------------------
+    // Virtual sequences and sequence library (after root — reference evm_root::get())
+    //--------------------------------------------------------------------------
+    `include "evm_virtual_sequence.sv"
+    `include "evm_sequence_library.sv"
+    
     `include "evm_base_test.sv"
-    `include "evm_test_registry.sv"     // NEW: +EVM_TESTNAME test selection
+    `include "evm_test_registry.sv"
     
 endpackage : evm_pkg

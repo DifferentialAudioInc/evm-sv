@@ -82,19 +82,24 @@ class evm_stream_monitor extends evm_monitor#(virtual evm_stream_if);
     // Capture Samples Task
     //==========================================================================
     virtual task capture_samples();
+        // ALL declarations at top — Vivado xvlog requires this
+        bit any_valid;
+        realtime current_time;
+        real time_sec;
+        
         while (capturing) begin
             @(posedge vif.clk);
             
             // Check if any channel is valid
-            bit any_valid = 0;
+            any_valid = 0;
             for (int ch = 0; ch < cfg.num_channels; ch++) begin
                 if (vif.valid[ch]) any_valid = 1;
             end
             
             if (any_valid) begin
                 // Calculate timestamp
-                realtime current_time = $realtime;
-                real time_sec = (current_time - start_time) / 1s;
+                current_time = $realtime;
+                time_sec = (current_time - start_time) / 1s;
                 
                 // Write timestamp
                 $fwrite(file_handle, "%.9f", time_sec);

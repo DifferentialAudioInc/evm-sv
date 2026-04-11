@@ -73,18 +73,14 @@ virtual class evm_virtual_sequence extends evm_sequence;
         
         v_sequencer = sequencer;
         
-        // Raise objection
-        if (v_sequencer != null) begin
-            v_sequencer.raise_objection({get_name(), "_running"});
-        end
+        // Raise objection via evm_root (v_sequencer doesn't have raise_objection)
+        evm_root::get().raise_objection({get_name(), "_running"});
         
         // Execute body
         body();
         
         // Drop objection
-        if (v_sequencer != null) begin
-            v_sequencer.drop_objection({get_name(), "_running"});
-        end
+        evm_root::get().drop_objection({get_name(), "_running"});
     endtask
     
     //==========================================================================
@@ -140,41 +136,7 @@ endclass
 // endclass
 //==============================================================================
 
-//==============================================================================
-// Utility: Sequence Coordination Helpers
-//==============================================================================
-
-// Start multiple sequences in parallel
-task automatic evm_start_parallel_sequences(evm_sequence sequences[$], evm_sequencer sequencers[$]);
-    if (sequences.size() != sequencers.size()) begin
-        evm_report_handler::report(EVM_ERROR, "evm_start_parallel_sequences", 
-            "Sequence and sequencer count mismatch");
-        return;
-    end
-    
-    fork
-        foreach (sequences[i]) begin
-            automatic int idx = i;
-            sequences[idx].start(sequencers[idx]);
-        end
-    join
-endtask
-
-// Start sequences sequentially
-task automatic evm_start_sequential_sequences(evm_sequence sequences[$], evm_sequencer sequencers[$]);
-    if (sequences.size() != sequencers.size()) begin
-        evm_report_handler::report(EVM_ERROR, "evm_start_sequential_sequences", 
-            "Sequence and sequencer count mismatch");
-        return;
-    end
-    
-    foreach (sequences[i]) begin
-        sequences[i].start(sequencers[i]);
-    end
-endtask
-
-// Start sequence with delay
-task automatic evm_start_delayed_sequence(evm_sequence seq, evm_sequencer seqr, int delay_ns);
-    #(delay_ns * 1ns);
-    seq.start(seqr);
-endtask
+// NOTE: Sequence coordination utility tasks removed pending API review.
+// evm_sequence does not expose a run-time execution method at the evm_sequence level.
+// These tasks will be re-enabled once the correct execution API is confirmed.
+// See NEXT_STEPS.md for details.

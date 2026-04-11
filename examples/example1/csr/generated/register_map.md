@@ -1,8 +1,8 @@
 # Register Map Documentation
 ## DSP-4CH-100M
 
-**Generated:** 2026-04-10 00:05:08  
-**Source:** c:\evm\evm-sv\examples\axi_data_xform\rtl\axi_data_xform_csr.yaml
+**Generated:** 2026-04-10 15:26:15  
+**Source:** c:\evm\evm-sv\examples\example1\csr\example1.yaml
 
 ## Table of Contents
 
@@ -31,12 +31,7 @@
 | Bits | Field | Description |
 |------|-------|-------------|
 | [0] | ENABLE | Enable transform engine (1=enabled) |
-| [2:1] | XFORM_SEL | Transform select:
-  0 = passthrough  (result = data)
-  1 = invert       (result = ~data)
-  2 = byte_swap    (result = {d[7:0],d[15:8],d[23:16],d[31:24]})
-  3 = bit_reverse  (result = data bit-reversed)
- |
+| [2:1] | XFORM_SEL | Transform select: 0=passthrough 1=invert 2=byte_swap 3=bit_reverse |
 
 ### DATA_IN
 

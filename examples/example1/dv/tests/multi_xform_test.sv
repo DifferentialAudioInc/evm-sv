@@ -64,4 +64,4 @@ class multi_xform_test extends example1_base_test;
     endfunction
     
 endclass : multi_xform_test
-`EVM_REGISTER_TEST(multi_xform_test)
+// Note: registration done in tb_top.sv (initial block not allowed in package context)

@@ -54,19 +54,19 @@ class evm_reg_block extends evm_object;
     //==========================================================================
     
     // Add register to block
-    virtual function void add_reg(evm_reg reg);
-        reg.set_parent(this);
+    virtual function void add_reg(evm_reg csr);    // 'csr' avoids SV keyword 'reg'
+        csr.set_parent(this);
         
         // If default agent configured, assign to register
         if (default_agent != null) begin
-            reg.set_agent(default_agent);
+            csr.set_agent(default_agent);
         end
         
-        registers.push_back(reg);
-        reg_map[reg.get_name()] = reg;
+        registers.push_back(csr);
+        reg_map[csr.get_name()] = csr;
         
         log_info($sformatf("Added register %s @0x%08x to block %s", 
-                          reg.get_name(), reg.get_address(), get_name()), EVM_DEBUG);
+                          csr.get_name(), csr.get_address(), get_name()), EVM_DEBUG);
     endfunction
     
     // Get register by name
@@ -108,33 +108,33 @@ class evm_reg_block extends evm_object;
     // Write by Name - Convenience method
     //==========================================================================
     virtual task write_reg(string reg_name, bit [63:0] value, output bit status);
-        evm_reg reg;
+        evm_reg csr;    // 'csr' avoids SV keyword 'reg'
         
-        reg = get_reg_by_name(reg_name);
-        if (reg == null) begin
+        csr = get_reg_by_name(reg_name);
+        if (csr == null) begin
             log_error($sformatf("Cannot write - register %s not found", reg_name));
             status = 0;
             return;
         end
         
-        reg.write(value, status);
+        csr.write(value, status);
     endtask
     
     //==========================================================================
     // Read by Name - Convenience method
     //==========================================================================
     virtual task read_reg(string reg_name, output bit [63:0] value, output bit status);
-        evm_reg reg;
+        evm_reg csr;    // 'csr' avoids SV keyword 'reg'
         
-        reg = get_reg_by_name(reg_name);
-        if (reg == null) begin
+        csr = get_reg_by_name(reg_name);
+        if (csr == null) begin
             log_error($sformatf("Cannot read - register %s not found", reg_name));
             status = 0;
             value = 0;
             return;
         end
         
-        reg.read(value, status);
+        csr.read(value, status);
     endtask
     
     //==========================================================================
@@ -142,16 +142,16 @@ class evm_reg_block extends evm_object;
     //==========================================================================
     virtual task read_check_reg(string reg_name, bit [63:0] expected, 
                                 bit [63:0] mask = '1, output bit status);
-        evm_reg reg;
+        evm_reg csr;    // 'csr' avoids SV keyword 'reg'
         
-        reg = get_reg_by_name(reg_name);
-        if (reg == null) begin
+        csr = get_reg_by_name(reg_name);
+        if (csr == null) begin
             log_error($sformatf("Cannot read-check - register %s not found", reg_name));
             status = 0;
             return;
         end
         
-        reg.read_check(expected, mask, status);
+        csr.read_check(expected, mask, status);
     endtask
     
     //==========================================================================

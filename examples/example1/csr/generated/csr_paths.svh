@@ -1,8 +1,8 @@
 //==============================================================================
 // File: csr_paths.svh
 // Description: SystemVerilog include paths for CSR modules
-// Generated: 2026-04-10 00:05:08
-// Source: c:\evm\evm-sv\examples\axi_data_xform\rtl\axi_data_xform_csr.yaml
+// Generated: 2026-04-10 15:26:15
+// Source: c:\evm\evm-sv\examples\example1\csr\example1.yaml
 //==============================================================================
 
 // Include this file to get all CSR package paths

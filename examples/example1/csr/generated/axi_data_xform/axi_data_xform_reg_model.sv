@@ -1,8 +1,8 @@
 //==============================================================================
 // Class: axi_data_xform_reg_model
 // Description: EVM register model for AXI Data Transform DUT registers
-// Generated: 2026-04-10 00:05:08
-// Source: c:\evm\evm-sv\examples\axi_data_xform\rtl\axi_data_xform_csr.yaml
+// Generated: 2026-04-10 15:26:15
+// Source: c:\evm\evm-sv\examples\example1\csr\example1.yaml
 //==============================================================================
 
 class axi_data_xform_reg_model extends evm_object;
@@ -121,9 +121,10 @@ class axi_data_xform_reg_model extends evm_object;
     endtask
 
     // Read from STATUS
-    task read_status(output bit [31:0] value, output bit status);
+    // Note: output parameter renamed 'rw_ok' to avoid collision with 'status' register member
+    task read_status(output bit [31:0] value, output bit rw_ok);
         bit [63:0] val64;
-        status.read(val64, status);
+        status.read(val64, rw_ok);
         value = val64[31:0];
     endtask
 

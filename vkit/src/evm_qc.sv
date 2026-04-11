@@ -167,7 +167,7 @@ class evm_qc extends evm_component;
         log_info("Quiescence Counter enabled", EVM_MEDIUM);
     endfunction
     
-    function void disable();
+    function void set_disabled();   // renamed: 'disable' is a SV keyword
         enabled = 0;
         log_info("Quiescence Counter disabled", EVM_MEDIUM);
     endfunction

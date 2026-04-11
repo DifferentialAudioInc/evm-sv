@@ -56,4 +56,4 @@ class random_test extends example1_base_test;
     endfunction
     
 endclass : random_test
-`EVM_REGISTER_TEST(random_test)
+// Note: registration done in tb_top.sv (initial block not allowed in package context)

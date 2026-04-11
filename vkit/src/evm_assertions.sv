@@ -130,7 +130,8 @@ class evm_assertion_checker extends evm_component;
         check(value >= min && value <= max, full_msg);
     endfunction
     
-    virtual function void check_not_null(ref logic ptr, string msg = "Pointer is null");
+    virtual function void check_not_null(input logic ptr, string msg = "Pointer is null");
+        // Changed ref→input: ref not allowed for scalar in virtual functions (Vivado xvlog)
         check(ptr !== 1'bx && ptr !== 1'bz, msg);
     endfunction
     

@@ -201,7 +201,7 @@ class evm_report_handler;
                 if (max_quit_count > 0 && total_errors >= max_quit_count) begin
                     $display("[%0t] [EVM] Maximum error count (%0d) reached - stopping simulation",
                            $time, max_quit_count);
-                    #1us; // Allow waveforms to be saved
+                    // Note: no #delay in function — waveforms captured via log_wave
                     $finish(2);
                 end else if (stop_on_error) begin
                     $display("[%0t] [EVM] Stopping simulation due to ERROR (stop_on_error=1)", $time);
@@ -210,11 +210,8 @@ class evm_report_handler;
             end
             
             EVM_FATAL: begin
-                $display("[%0t] [FATAL] Simulation will terminate in %0dns to allow waveform capture...",
-                       $time, fatal_delay_ns);
-                // Critical: Add delay before finishing to capture waveforms
-                #(fatal_delay_ns * 1ns);
                 $display("[%0t] [FATAL] Terminating simulation", $time);
+                // Note: no #delay in function — waveforms captured via log_wave
                 $finish(2);
             end
             

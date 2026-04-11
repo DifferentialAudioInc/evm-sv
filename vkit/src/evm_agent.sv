@@ -49,13 +49,17 @@ virtual class evm_agent #(type VIF, type T = int) extends evm_component;
     
     //==========================================================================
     // Set Virtual Interface - Called from test or environment
+    // Propagates to sub-components (driver, monitor) if already built
     //==========================================================================
     function void set_vif(VIF vif_handle);
         if (vif_handle == null) begin
-            log_error("Attempting to set null virtual interface");
+            log_warning("Attempting to set null virtual interface — will be set later");
         end else begin
             this.vif = vif_handle;
-            log_info("Virtual interface set", EVM_MED);
+            // Propagate to sub-components if already created (build_phase done)
+            if (monitor != null) monitor.set_vif(vif_handle);
+            if (driver  != null) driver.set_vif(vif_handle);
+            log_info("Virtual interface set — propagated to driver and monitor", EVM_MED);
         end
     endfunction
     
@@ -65,16 +69,14 @@ virtual class evm_agent #(type VIF, type T = int) extends evm_component;
     virtual function void build_phase();
         super.build_phase();
         
-        if (vif == null) begin
-            log_error("Virtual interface not set before build_phase");
-        end
+        // VIF may be null here — that's fine, set_vif() propagates it later
         
         // Always create monitor
         monitor = create_monitor("monitor");
         if (monitor == null) begin
             log_error("Failed to create monitor");
         end else begin
-            monitor.set_vif(vif);  // Pass virtual interface to monitor
+            if (vif != null) monitor.set_vif(vif);  // Only set if VIF available at build time
             log_info($sformatf("Created monitor in %s mode", 
                      mode == EVM_ACTIVE ? "ACTIVE" : "PASSIVE"), EVM_MED);
         end
@@ -85,7 +87,7 @@ virtual class evm_agent #(type VIF, type T = int) extends evm_component;
             if (driver == null) begin
                 log_error("Failed to create driver");
             end else begin
-                driver.set_vif(vif);  // Pass virtual interface to driver
+                if (vif != null) driver.set_vif(vif);  // Only set if VIF available at build time
                 log_info("Created driver (ACTIVE mode)", EVM_MED);
             end
             
@@ -99,6 +101,19 @@ virtual class evm_agent #(type VIF, type T = int) extends evm_component;
             log_info("No driver/sequencer created (PASSIVE mode)", EVM_MED);
         end
     endfunction
+    
+    //==========================================================================
+    // Run Phase - Validate VIF was set (by connect_phase)
+    // By run_phase time, all VIFs must be set — if null here, something went wrong
+    //==========================================================================
+    virtual task run_phase();
+        super.run_phase();
+        if (vif == null) begin
+            log_error($sformatf("VIF is null at run_phase start — was set_vif() called in connect_phase?"));
+        end else begin
+            log_info("run_phase: VIF confirmed valid", EVM_HIGH);
+        end
+    endtask
     
     //==========================================================================
     // Connect Phase - Connect agent components
@@ -151,8 +166,10 @@ virtual class evm_agent #(type VIF, type T = int) extends evm_component;
     
     // Create sequencer - can be overridden for custom sequencers
     virtual function evm_sequencer#(T, T) create_sequencer(string name);
-        // Default implementation creates standard sequencer
-        return new(name, this);
+        // Intermediate variable required for xvlog compatibility (avoids 'new' in return)
+        evm_sequencer#(T, T) sqr;
+        sqr = new(name, this);
+        return sqr;
     endfunction
     
     //==========================================================================

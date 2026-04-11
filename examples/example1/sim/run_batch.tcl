@@ -1,6 +1,6 @@
 #==============================================================================
 # run_batch.tcl - Vivado Batch Mode Simulation Script
-# Runs a single test, generates waves, simulates for up to 100us
+# Creates a disk-based project, compiles, simulates 100us, saves waves.
 #
 # USAGE FROM WINDOWS COMMAND LINE:
 #   vivado -mode batch -source c:/evm/evm-sv/examples/example1/sim/run_batch.tcl
@@ -8,46 +8,54 @@
 # With test selection:
 #   vivado -mode batch -source c:/evm/evm-sv/examples/example1/sim/run_batch.tcl -tclargs basic_write_test
 #
-# With other tests:
-#   vivado -mode batch -source ... -tclargs multi_xform_test
-#   vivado -mode batch -source ... -tclargs random_test
-#
 # OUTPUT:
-#   - Console log: simulation output + pass/fail
-#   - waves.wdb:   Vivado waveform database (open with: vivado waves.wdb)
-#   - waves.vcd:   VCD waveform (open with any VCD viewer)
+#   - sim/sim_work/   Vivado project (auto-generated, gitignored)
+#   - waves.wdb       Open with: vivado waves.wdb
 #
 # Author: Eric Dyer (Differential Audio Inc.)
 #==============================================================================
 
-# Self-referencing paths
 set SIM_DIR     [file normalize [file dirname [info script]]]
 set EXAMPLE_DIR [file normalize "$SIM_DIR/.."]
 set EVM_DIR     [file normalize "$EXAMPLE_DIR/../.."]
+set PROJ_DIR    "$SIM_DIR/sim_work"
 
-# Test name from command-line argument or default
 set TEST_NAME "basic_write_test"
-if {[llength $argv] > 0} {
-    set TEST_NAME [lindex $argv 0]
-}
+if {[llength $argv] > 0} { set TEST_NAME [lindex $argv 0] }
 
 puts "============================================================"
 puts "  EVM example1 - Vivado Batch Simulation"
 puts "  Test:    $TEST_NAME"
-puts "  Runtime: 100us"
+puts "  Runtime: 1000us"
 puts "============================================================"
 
 #------------------------------------------------------------------------------
-# Create project
+# Auto-detect installed part (behavioral sim works with any part)
 #------------------------------------------------------------------------------
-create_project -in_memory -part xc7k325tffg900-2 -force
+set _parts [get_parts]
+set _part  [lindex $_parts 0]
+foreach _p $_parts {
+    if {[string match "xc7a*" $_p] || [string match "xc7z*" $_p]} {
+        set _part $_p; break
+    }
+}
+puts "Using part: $_part"
+
+#------------------------------------------------------------------------------
+# Create a real disk project (required for launch_simulation in batch mode)
+# Delete old project first to force clean rebuild of compiled objects
+#------------------------------------------------------------------------------
+file delete -force $PROJ_DIR
+file mkdir $PROJ_DIR
+create_project -force example1_sim $PROJ_DIR -part $_part
 set_property simulator_language Mixed [current_project]
 
 #------------------------------------------------------------------------------
-# Source files
+# Add source files
 #------------------------------------------------------------------------------
 set all_files [list \
     "$EVM_DIR/vkit/evm_vkit/evm_axi_lite_agent/evm_axi_lite_if.sv" \
+    "$EVM_DIR/vkit/evm_vkit/evm_axi4_full_agent/evm_axi4_full_if.sv" \
     "$EXAMPLE_DIR/dv/tb/intf/gpio_if.sv" \
     "$EVM_DIR/vkit/src/evm_pkg.sv" \
     "$EVM_DIR/vkit/evm_vkit/evm_vkit_pkg.sv" \
@@ -63,7 +71,7 @@ foreach f $all_files {
         add_files -fileset sim_1 $f
         set_property FILE_TYPE {SystemVerilog} [get_files $f]
     } else {
-        puts "WARNING: Missing file: $f"
+        puts "WARNING: Missing: $f"
     }
 }
 
@@ -71,6 +79,7 @@ set_property include_dirs [list \
     "$EVM_DIR/vkit/src" \
     "$EVM_DIR/vkit/evm_vkit" \
     "$EVM_DIR/vkit/evm_vkit/evm_axi_lite_agent" \
+    "$EVM_DIR/vkit/evm_vkit/evm_axi4_full_agent" \
     "$EXAMPLE_DIR/csr/generated/axi_data_xform" \
     "$EXAMPLE_DIR/dv/tb" \
     "$EXAMPLE_DIR/dv/tb/intf" \
@@ -78,48 +87,36 @@ set_property include_dirs [list \
     "$EXAMPLE_DIR/dv/tests" \
 ] [get_filesets sim_1]
 
-set_property top tb_top            [get_filesets sim_1]
-set_property top_lib xil_defaultlib [get_filesets sim_1]
+set_property top        tb_top         [get_filesets sim_1]
+set_property top_lib    xil_defaultlib [get_filesets sim_1]
 
-# Pass test name as plusarg
+# Plusargs: test name
+# XSim uses -testplusarg syntax (NOT +ARG=VALUE which is positional in XSim)
 set_property -name {xsim.simulate.xsim.more_options} \
-    -value "+EVM_TESTNAME=$TEST_NAME" \
-    -objects [get_filesets sim_1]
+    -value "-testplusarg EVM_TESTNAME=$TEST_NAME" -objects [get_filesets sim_1]
 
-# Simulation runtime
-set_property -name {xsim.simulate.runtime} -value {100us} -objects [get_filesets sim_1]
-
-# Enable waveform logging (creates waves.wdb)
-set_property -name {xsim.simulate.log_all_signals} -value {true} -objects [get_filesets sim_1]
+# Runtime — extend to 1000us to allow full test completion
+set_property -name {xsim.simulate.runtime}         -value {1000us} -objects [get_filesets sim_1]
+set_property -name {xsim.simulate.log_all_signals} -value {true}  -objects [get_filesets sim_1]
 
 #------------------------------------------------------------------------------
-# Compile
+# Compile and simulate
 #------------------------------------------------------------------------------
-puts ""
-puts "Compiling..."
-if {[catch {launch_simulation -simset sim_1 -mode behavioral} err]} {
-    puts "COMPILATION FAILED: $err"
-    exit 1
-}
-puts "Compilation successful."
+puts "\nCompiling..."
+launch_simulation -simset sim_1 -mode behavioral
 
-#------------------------------------------------------------------------------
-# Capture waveforms for all signals, then run
-#------------------------------------------------------------------------------
-# Add all signals to waveform database
+puts "\nLogging all waves..."
 log_wave -recursive *
 
-puts ""
-puts "Running simulation for 100us (+EVM_TESTNAME=$TEST_NAME)..."
-run 100us
+puts "\nRunning 1000us (+EVM_TESTNAME=$TEST_NAME)..."
+run 1000us
 
 puts ""
 puts "============================================================"
-puts "  Simulation complete."
-puts "  Waveforms: open waves.wdb in Vivado GUI"
-puts "             (vivado waves.wdb)"
-puts "  VCD:       waves.vcd (compatible with GTKWave, etc.)"
+puts "  Done. To view waves:"
+puts "    vivado $PROJ_DIR/example1_sim.sim/sim_1/behav/xsim/wave.wdb"
+puts "  Or from the directory where vivado was launched:"
+puts "    vivado waves.wdb   (if wdb was written here)"
 puts "============================================================"
 
-# Save and close
 close_sim

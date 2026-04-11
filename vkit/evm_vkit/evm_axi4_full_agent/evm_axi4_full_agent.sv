@@ -59,7 +59,9 @@ class evm_axi4_full_master_agent extends evm_component;
                  evm_component parent = null,
                  evm_axi4_full_cfg cfg = null);
         super.new(name, parent);
-        this.cfg = (cfg != null) ? cfg : new("cfg");
+        // Avoid 'new' in ternary — xvlog compatibility
+        if (cfg != null) this.cfg = cfg;
+        else this.cfg = new("cfg");
     endfunction
     
     //==========================================================================

@@ -133,7 +133,7 @@ virtual class evm_reg_predictor #(type TXN = evm_sequence_item) extends evm_comp
     // Process a single transaction - update mirror or check read data
     //==========================================================================
     virtual function void process_txn(TXN txn);
-        evm_reg     reg;
+        evm_reg     csr;    // 'csr' avoids SV keyword 'reg'
         bit [63:0]  addr;
         bit [63:0]  data;
         bit         write;
@@ -148,9 +148,9 @@ virtual class evm_reg_predictor #(type TXN = evm_sequence_item) extends evm_comp
         write = is_write(txn);
         
         // Lookup register in the address map
-        reg = reg_map.get_reg_by_address(addr);
+        csr = reg_map.get_reg_by_address(addr);
         
-        if (reg == null) begin
+        if (csr == null) begin
             unknown_addr++;
             if (verbose) begin
                 log_info($sformatf("RAL predictor: no register at addr=0x%08x", 
@@ -161,28 +161,28 @@ virtual class evm_reg_predictor #(type TXN = evm_sequence_item) extends evm_comp
         
         if (write) begin
             // Update mirror value from observed write (is_read=0)
-            reg.predict(data, 0);
+            csr.predict(data, 0);
             write_predictions++;
             if (verbose) begin
                 log_info($sformatf("RAL predictor: WRITE to %s addr=0x%08x data=0x%08x", 
-                                  reg.get_name(), addr, data), EVM_DEBUG);
+                                  csr.get_name(), addr, data), EVM_DEBUG);
             end
         end else begin
             // Optionally check read data against mirror
             if (check_reads) begin
-                bit [63:0] mirror_val = reg.get();
+                bit [63:0] mirror_val = csr.get();
                 read_checks++;
                 if (mirror_val !== data) begin
                     read_mismatches++;
                     log_error($sformatf(
                         "RAL predictor: READ MISMATCH at %s addr=0x%08x " ,
-                        reg.get_name(), addr));
+                        csr.get_name(), addr));
                     log_error($sformatf(
                         "  Expected (mirror): 0x%08x  Got: 0x%08x",
                         mirror_val, data));
                 end else if (verbose) begin
                     log_info($sformatf("RAL predictor: READ OK at %s addr=0x%08x data=0x%08x",
-                                      reg.get_name(), addr, data), EVM_DEBUG);
+                                      csr.get_name(), addr, data), EVM_DEBUG);
                 end
             end
         end

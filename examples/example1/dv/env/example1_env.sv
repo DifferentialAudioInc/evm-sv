@@ -30,6 +30,9 @@ class example1_env extends evm_env;
             axi_cfg.mode = EVM_AXI_ACTIVE_MASTER;
             csr_agent = new("csr_agent", this);
             csr_agent.cfg = axi_cfg;
+            csr_agent.build_phase();         // Creates driver + monitor
+            // Set VIF immediately after build — don't rely on connect_phase being called
+            if (slave_vif != null) csr_agent.set_vif(slave_vif);
         end
         
         begin
@@ -37,6 +40,9 @@ class example1_env extends evm_env;
             axi_cfg.mode = EVM_AXI_PASSIVE;
             master_mon = new("master_mon", this);
             master_mon.cfg = axi_cfg;
+            master_mon.set_mode(EVM_AXI_PASSIVE);  // Ensure passive (monitor only)
+            master_mon.build_phase();               // Creates monitor
+            if (master_vif != null) master_mon.set_vif(master_vif);
         end
         
         scoreboard = new("scoreboard", this);
@@ -59,8 +65,9 @@ class example1_env extends evm_env;
         ral.reg_block.reset();
         
         predictor.reg_map = reg_map;
-        csr_agent.monitor.ap_write.connect(predictor.analysis_imp.get_mailbox());
-        master_mon.monitor.ap_write.connect(scoreboard.analysis_imp.get_mailbox());
+        // Use get_monitor() to get the typed evm_axi_lite_monitor (has ap_write)
+        csr_agent.get_monitor().ap_write.connect(predictor.analysis_imp.get_mailbox());
+        master_mon.get_monitor().ap_write.connect(scoreboard.analysis_imp.get_mailbox());
         
         log_info("Environment connected", EVM_LOW);
     endfunction

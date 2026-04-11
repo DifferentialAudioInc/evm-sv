@@ -78,7 +78,7 @@ virtual class evm_base_test extends evm_component;
         // Process seed
         seed = evm_cmdline::get_seed();
         if (seed != 0) begin
-            $urandom(seed);
+            $srandom(seed);  // $srandom() is the correct SV seed function (XSim compatible)
             log_info($sformatf("Random seed set to: %0d", seed), EVM_MEDIUM);
         end
         
@@ -115,7 +115,7 @@ virtual class evm_base_test extends evm_component;
     function void disable_quiescence_counter();
         enable_qc = 0;
         if (qc != null) begin
-            qc.disable();
+        qc.set_disabled();   // renamed from disable() — 'disable' is SV keyword
         end
         log_info("Quiescence Counter disabled", EVM_MEDIUM);
     endfunction

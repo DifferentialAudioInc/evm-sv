@@ -133,10 +133,14 @@ module tb_top;
     
     //==========================================================================
     // Test Execution
+    // Variables declared at top of initial block (Vivado xvlog requirement)
     //==========================================================================
     initial begin
-    example1_base_test t;
-        string testname;
+        // All declarations at top of initial block
+        automatic example1_base_test t     = null;
+        automatic evm_base_test      base_t = null;
+        automatic basic_write_test   dflt   = null;
+        automatic string             testname = "";
         
         // Wait for reset
         @(posedge rst_n);
@@ -144,17 +148,18 @@ module tb_top;
         
         // Create test via registry (+EVM_TESTNAME=<name>)
         if ($value$plusargs("EVM_TESTNAME=%s", testname)) begin
-            evm_base_test base_t = evm_test_registry::create_test(testname);
+            base_t = evm_test_registry::create_test(testname);
             if (base_t == null) begin
-                $fatal(1, "[TB_TOP] Unknown test: %s (use +EVM_LIST_TESTS)", testname);
+                $fatal(1, "[TB_TOP] Unknown test: %s", testname);
             end
             if (!$cast(t, base_t)) begin
                 $fatal(1, "[TB_TOP] Test %s is not an example1_base_test", testname);
             end
         end else begin
-            // Default test if no plusarg
+            // Default test — instantiate concrete subclass (not virtual base)
             $display("[TB_TOP] No +EVM_TESTNAME — running basic_write_test");
-            t = new("basic_write_test");
+            dflt = new("basic_write_test");
+            t = dflt;
         end
         
         // Pass virtual interfaces to test
@@ -167,6 +172,15 @@ module tb_top;
         
         $finish;
     end
+    
+    //==========================================================================
+    // Test Registry — EVM_REGISTER_TEST at MODULE scope (macro contains initial block)
+    // Each macro expands to: class declaration + initial begin...end
+    // initial blocks only allowed in modules, NOT inside packages
+    //==========================================================================
+    `EVM_REGISTER_TEST(basic_write_test)
+    `EVM_REGISTER_TEST(multi_xform_test)
+    `EVM_REGISTER_TEST(random_test)
     
     //==========================================================================
     // Waveform dump

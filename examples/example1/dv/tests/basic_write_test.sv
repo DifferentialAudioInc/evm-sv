@@ -61,4 +61,4 @@ class basic_write_test extends example1_base_test;
     endfunction
     
 endclass : basic_write_test
-`EVM_REGISTER_TEST(basic_write_test)
+// Note: registration done in tb_top.sv (initial block not allowed in package context)

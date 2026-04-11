@@ -30,7 +30,20 @@ puts "============================================================"
 proc setup_project {} {
     global SIM_DIR EXAMPLE_DIR EVM_DIR
     
-    create_project -in_memory -part xc7k325tffg900-2 -force
+    # Auto-detect part: behavioral simulation works with any installed part
+    set _parts [get_parts]
+    set _part  [lindex $_parts 0]
+    foreach _p $_parts {
+        if {[string match "xc7a*" $_p] || [string match "xc7z*" $_p]} {
+            set _part $_p; break
+        }
+    }
+    puts "Using part: $_part"
+    
+    # Create disk project (launch_simulation requires a saved project)
+    set PROJ_DIR "$SIM_DIR/sim_work"
+    file mkdir $PROJ_DIR
+    create_project -force example1_sim $PROJ_DIR -part $_part
     set_property simulator_language Mixed [current_project]
     
     # Interface files (compiled before packages)

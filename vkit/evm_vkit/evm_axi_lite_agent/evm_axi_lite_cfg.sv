@@ -48,6 +48,12 @@ class evm_axi_lite_cfg extends evm_object;
     // Back-to-back transaction probability (0-100)
     rand int back_to_back_pct = 80;
     
+    // Per-channel delay cycles (used by driver)
+    int aw_delay_cycles = 0;   // AW channel delay
+    int w_delay_cycles  = 0;   // W  channel delay
+    int ar_delay_cycles = 0;   // AR channel delay
+    bit enable_delays   = 0;   // Master: enable channel delays
+    
     // Ready delay ranges (slave ready signals when in master mode)
     rand int awready_delay_min = 0;
     rand int awready_delay_max = 1;

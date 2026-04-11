@@ -121,7 +121,10 @@ class evm_cmdline;
     // Usage: +evm_debug, +evm_waveform
     //==========================================================================
     static function bit has_plusarg(string arg);
-        return $test$plusargs(arg);
+        // $test$plusargs(variable) crashes XSim — XSim only supports string literals
+        // Workaround: use $value$plusargs which handles variable format strings correctly
+        string dummy;
+        return $value$plusargs({arg, "=%s"}, dummy);
     endfunction
     
     //==========================================================================

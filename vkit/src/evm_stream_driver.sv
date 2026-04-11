@@ -110,11 +110,16 @@ class evm_stream_driver extends evm_driver#(virtual evm_stream_if);
     // Load Buffer from File
     //==========================================================================
     virtual function int load_buffer_from_file(string filename, int max_samples);
+        // ALL declarations at top — Vivado xvlog requires this
         int file_handle;
         string line;
         int status;
-        int samples_loaded = 0;
+        int samples_loaded;
+        string tokens[$];
+        int token_start;
+        string token;
         
+        samples_loaded = 0;
         file_handle = $fopen(filename, "r");
         if (file_handle == 0) begin
             log_error($sformatf("Failed to open buffer file: %s", filename));
@@ -130,13 +135,11 @@ class evm_stream_driver extends evm_driver#(virtual evm_stream_if);
             if (line[0] == "#" || line[0] == "\n") continue;
             
             // Parse comma-separated values: time, ch0, ch1, ...
-            automatic string tokens[$];
-            int token_start = 0;
-            
+            tokens = {};  token_start = 0;  // reset for each line
             for (int i = 0; i < line.len(); i++) begin
                 if (line[i] == "," || line[i] == "\n") begin
                     if (i > token_start) begin
-                        string token = line.substr(token_start, i-1);
+                        token = line.substr(token_start, i-1);  // 'token' declared at top
                         tokens.push_back(token);
                     end
                     token_start = i + 1;
@@ -147,11 +150,12 @@ class evm_stream_driver extends evm_driver#(virtual evm_stream_if);
             if (tokens.size() < 2) continue; // Need at least time + 1 channel
             
             // Write to buffer at write pointer (skip time, load channels)
+            // Note: 'sample' is not needed here; use a class-level temp below
             for (int ch = 0; ch < cfg.num_channels && (ch+1) < tokens.size(); ch++) begin
-                real sample;
-                status = $sscanf(tokens[ch+1], "%f", sample);
+                real sample_val;  // needed as output arg for $sscanf — Vivado allows in for
+                status = $sscanf(tokens[ch+1], "%f", sample_val);
                 if (status > 0) begin
-                    buffer[ch][buffer_write_ptr] = sample;
+                    buffer[ch][buffer_write_ptr] = sample_val;
                 end
             end
             
@@ -178,11 +182,17 @@ class evm_stream_driver extends evm_driver#(virtual evm_stream_if);
     // Load Complete File (Non-buffered Mode)
     //==========================================================================
     virtual function int load_complete_file();
+        // ALL declarations at top — Vivado xvlog requires this
         int file_handle;
         string line;
         int status;
-        int samples_loaded = 0;
+        int samples_loaded;
+        string tokens[$];
+        int token_start;
+        string token;
+        real sample;
         
+        samples_loaded = 0;
         log_info($sformatf("Loading complete stimulus from: %s", cfg.stimulus_file), EVM_MED);
         
         file_handle = $fopen(cfg.stimulus_file, "r");
@@ -204,13 +214,11 @@ class evm_stream_driver extends evm_driver#(virtual evm_stream_if);
             
             if (line[0] == "#" || line[0] == "\n") continue;
             
-            automatic string tokens[$];
-            int token_start = 0;
-            
+            tokens = {};  token_start = 0;  // reset for each line
             for (int i = 0; i < line.len(); i++) begin
                 if (line[i] == "," || line[i] == "\n") begin
                     if (i > token_start) begin
-                        string token = line.substr(token_start, i-1);
+                        token = line.substr(token_start, i-1);
                         tokens.push_back(token);
                     end
                     token_start = i + 1;
@@ -221,7 +229,6 @@ class evm_stream_driver extends evm_driver#(virtual evm_stream_if);
             if (tokens.size() < 2) continue;
             
             for (int ch = 0; ch < cfg.num_channels && (ch+1) < tokens.size(); ch++) begin
-                real sample;
                 status = $sscanf(tokens[ch+1], "%f", sample);
                 if (status > 0) begin
                     buffer[ch].push_back(sample);
@@ -241,9 +248,11 @@ class evm_stream_driver extends evm_driver#(virtual evm_stream_if);
     // Check and Refill Buffer
     //==========================================================================
     virtual task check_and_refill_buffer();
+        // Declarations at top — Vivado xvlog requires this
+        int samples_to_generate;
+        int samples_generated;
         if (buffer_samples < cfg.buffer_refill_threshold) begin
-            int samples_to_generate = cfg.buffer_size - buffer_samples;
-            int samples_generated;
+            samples_to_generate = cfg.buffer_size - buffer_samples;
             
             log_info($sformatf("Buffer low (%0d samples), refilling with %0d samples", 
                      buffer_samples, samples_to_generate), EVM_MED);
@@ -263,6 +272,10 @@ class evm_stream_driver extends evm_driver#(virtual evm_stream_if);
     // Main Phase - Start Streaming
     //==========================================================================
     virtual task main_phase();
+        // ALL declarations at top — Vivado xvlog requires this
+        int samples_generated;
+        int samples_loaded;
+        
         super.main_phase();
         
         if (!cfg.enabled) begin
@@ -274,9 +287,7 @@ class evm_stream_driver extends evm_driver#(virtual evm_stream_if);
         if (cfg.buffered_mode) begin
             // Buffered mode: dynamic generation
             init_buffer();
-            
-            // Generate initial buffer
-            int samples_generated = generate_buffer(0, cfg.buffer_size);
+            samples_generated = generate_buffer(0, cfg.buffer_size);
             if (samples_generated == 0) begin
                 log_error("Failed to generate initial buffer");
                 return;
@@ -286,7 +297,7 @@ class evm_stream_driver extends evm_driver#(virtual evm_stream_if);
                      cfg.buffer_size, cfg.buffer_refill_threshold), EVM_LOW);
         end else begin
             // File mode: load entire file
-            int samples_loaded = load_complete_file();
+            samples_loaded = load_complete_file();
             if (samples_loaded == 0) begin
                 log_warning("No samples loaded - streaming disabled");
                 return;
@@ -345,12 +356,12 @@ class evm_stream_driver extends evm_driver#(virtual evm_stream_if);
             
             // Output current sample for all channels
             for (int ch = 0; ch < cfg.num_channels; ch++) begin
-                // Get sample from buffer
-                real normalized = buffer[ch][buffer_read_ptr];
-                
-                // Convert real to integer based on bit width
-                int max_val = (1 << (cfg.bit_width - 1)) - 1;
-                int sample_int = int'(normalized * max_val);
+                real normalized;
+                int  max_val;
+                int  sample_int;
+                normalized = buffer[ch][buffer_read_ptr];
+                max_val    = (1 << (cfg.bit_width - 1)) - 1;
+                sample_int = int'(normalized * max_val);
                 
                 vif.data[ch] <= sample_int;
                 vif.valid[ch] <= 1'b1;
