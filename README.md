@@ -165,11 +165,11 @@ To start an AI session: read `CLAUDE.md` first, then reference the specific docs
 
 ## What's Next
 
-The NIC example project — a complete TX NIC DUT + full EVM verification environment demonstrating the entire framework in a realistic IP scenario. See [NEXT_STEPS.md](NEXT_STEPS.md).
+**NIC example** *(planned — not yet started)*: a complete TX NIC DUT + full EVM verification environment demonstrating the framework in a realistic IP scenario. Planned for after core protocol agents (SPI, I2C, UART, APB) are stable. See [EVM_ROADMAP.md](../EVM_ROADMAP.md) for current status.
 
 ---
 
 ## License
 
 **MIT License** — See [LICENSE](LICENSE)  
-Copyright (c) 2026 Eric Dyer / Differential Audio Inc.
+Copyright (c) 2026 Differential Audio Inc.

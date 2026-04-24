@@ -64,5 +64,17 @@ package evm_vkit_pkg;
     `include "evm_spi_agent/evm_spi_initiator_driver.sv" // EVM=initiator, DUT=target
     `include "evm_spi_agent/evm_spi_target_agent.sv"     // target agent (PRIMARY)
     `include "evm_spi_agent/evm_spi_initiator_agent.sv"  // initiator agent
+
+    // ── I2C Agent (P1.2) ─────────────────────────────────────────────────────
+    // Note: evm_i2c_if.sv (interface) is NOT included here — add to filelist.f
+    // Open-drain simulation via scl_pull_low/sda_i_pull_low/sda_t_pull_low
+    `include "evm_i2c_agent/evm_i2c_device_model.sv"     // register-map device model
+    `include "evm_i2c_agent/evm_i2c_cfg.sv"              // cfg + speed/mode enums
+    `include "evm_i2c_agent/evm_i2c_txn.sv"              // transaction item
+    `include "evm_i2c_agent/evm_i2c_monitor.sv"          // passive observer (START/STOP detect)
+    `include "evm_i2c_agent/evm_i2c_target_driver.sv"    // EVM=target, DUT=initiator (PRIMARY)
+    `include "evm_i2c_agent/evm_i2c_initiator_driver.sv" // EVM=initiator, DUT=target
+    `include "evm_i2c_agent/evm_i2c_target_agent.sv"     // target agent (PRIMARY)
+    `include "evm_i2c_agent/evm_i2c_initiator_agent.sv"  // initiator agent
     
 endpackage : evm_vkit_pkg
