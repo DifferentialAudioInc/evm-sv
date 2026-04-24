@@ -12,6 +12,28 @@
 // Author: Eric Dyer  
 // Date: 2026-03-05
 // Updated: 2026-03-28 - Integrated with evm_report_handler
+// Updated: 2026-04-23 - P0.3: added log_expected_error()
+//
+// API — Public Interface:
+//   [evm_log] — virtual base class; all EVM classes extend this
+//   log_info(msg, level=EVM_MED)   — info message, verbosity-filtered
+//   log_warning(msg)               — warning; always shown
+//   log_error(msg)                 — error; always shown; increments error_count
+//   log_fatal(msg)                 — fatal; terminates simulation
+//   log_expected_error(msg)        — WARNING [EXPECTED]; no error_count [P0.3]
+//   set_global_verbosity(verb)     — set global verbosity (static)
+//   set_verbosity(verb)            — set instance verbosity
+//   get_verbosity()                — get instance verbosity
+//   get_error_count()   [static]   — unexpected errors only after P0.3
+//   get_warning_count() [static]   — unexpected warnings only after P0.3
+//   get_info_count()    [static]
+//   get_fatal_count()   [static]
+//   reset_stats()       [static]   — delegates to evm_report_handler::reset_counts()
+//   print_summary()     [static]   — delegates to evm_report_handler::print_summary()
+//   get_name()                     — returns m_name
+//   set_name(name)                 — sets m_name
+//
+//   Verbosity enum: EVM_NONE=0, EVM_LOW=100, EVM_MED=200, EVM_HIGH=300, EVM_DEBUG=500
 //==============================================================================
 
 virtual class evm_log;
@@ -89,6 +111,16 @@ virtual class evm_log;
             0,
             m_name
         );
+    endfunction
+    
+    // Log an expected error condition (P0.3).
+    // Use when this component itself knows an error is safe and expected.
+    // Logs as WARNING with [EXPECTED] prefix — does NOT increment error_count.
+    //
+    // Alternative pattern (from test): evm_report_handler::expect_error(pattern)
+    // which intercepts a later log_error() call instead of replacing it.
+    function void log_expected_error(string msg);
+        log_warning($sformatf("[EXPECTED] %s", msg));
     endfunction
     
     //==========================================================================

@@ -39,10 +39,12 @@ package evm_pkg;
     
     //--------------------------------------------------------------------------
     // Sequence infrastructure
+    // ORDER: sequence_item → csr_item → sequence → rand_sequence → csr_sequence
     //--------------------------------------------------------------------------
     `include "evm_sequence_item.sv"
     `include "evm_csr_item.sv"
     `include "evm_sequence.sv"
+    `include "evm_rand_sequence.sv"    // P0.1 — CRV base class (after evm_sequence)
     `include "evm_csr_sequence.sv"
     `include "evm_sequencer.sv"
     

@@ -203,7 +203,7 @@ static function string get_log_filename();
 // Statistics
 static function int  get_info_count();
 static function int  get_warning_count();
-static function int  get_error_count();
+static function int  get_error_count();   // UNEXPECTED errors only (post P0.3)
 static function int  get_fatal_count();
 static function int  get_severity_count(evm_severity_e severity);
 static function void reset_counts();
@@ -214,6 +214,139 @@ EVM_INFO=0, EVM_WARNING=1, EVM_ERROR=2, EVM_FATAL=3
 
 // Verbosity enum  
 EVM_NONE=0, EVM_LOW=100, EVM_MEDIUM=200, EVM_HIGH=300, EVM_FULL=400, EVM_DEBUG=500
+```
+
+#### P0.3 — Expected Error / Negative Test Infrastructure
+**Added:** 2026-04-23
+
+```systemverilog
+// ── Pattern-based expected error registration ────────────────────────────────
+// All patterns use case-sensitive substring matching.
+// Absorbed (expected) messages still displayed, tagged [EXPECTED].
+// get_error_count() returns UNEXPECTED errors only after P0.3.
+
+// Exact count: expect exactly N occurrences (default 1).
+// FAIL if seen < count (expected error never happened).
+// Errors beyond count pass through as unexpected (also FAIL).
+static function void expect_error(string pattern, int count=1);
+
+// Range: expect between min_count and max_count occurrences.
+//   min_count=0  → optional (0 occurrences is still PASS)
+//   max_count=-1 → unlimited (any count >= min_count is PASS)
+static function void expect_error_range(string pattern, int min_count=0, int max_count=1);
+
+// Optional: 0 or 1 occurrence — both OK. For ISR race conditions.
+// Equivalent to: expect_error_range(pattern, 0, 1)
+static function void expect_error_optional(string pattern);
+
+// Suppress: mute all occurrences permanently, no minimum required.
+// For known-noisy 3rd-party IP or startup transients.
+// Equivalent to: expect_error_range(pattern, 0, -1)
+static function void suppress_error(string pattern);
+
+// Warning equivalents (same semantics):
+static function void expect_warning(string pattern, int count=1);
+static function void expect_warning_range(string pattern, int min_count=0, int max_count=1);
+static function void expect_warning_optional(string pattern);
+static function void suppress_warning(string pattern);
+
+// Clear all registered expectations (call between test phases if needed)
+static function void clear_expected();
+
+// Query
+static function int get_unexpected_error_count();   // = error_count
+static function int get_unmet_expectation_count();  // > 0 → TEST FAILS
+
+// Print expectation table (called automatically from print_summary())
+static function void print_expectation_report();
+
+// Utility: public substring search (use in evm_error_catcher derived classes)
+static function bit str_contains(string haystack, string needle);
+
+// ── evm_error_catcher (complex conditional logic) ───────────────────────────
+// Register before stimulus, unregister after. Runs before pattern list.
+static function void register_error_catcher(evm_error_catcher catcher);
+static function void unregister_error_catcher(evm_error_catcher catcher);
+```
+
+**`evm_error_catcher`** (virtual class — defined in `evm_report_handler.sv`):
+```systemverilog
+// Extend to implement custom error interception logic.
+// Use for: ISR races, DMA burst windows, conditional suppression.
+virtual class evm_error_catcher;
+    function new(string n = "evm_error_catcher");
+    
+    // Return 1 to absorb/suppress (won't count as failure).
+    // Return 0 to let through as a real unexpected error.
+    pure virtual function bit catch_error(string id, string message, string context_name);
+    
+    // Optional: return 1 to absorb warnings. Default: don't catch.
+    virtual function bit catch_warning(string id, string message, string context_name);
+    
+    function string get_name();
+endclass
+```
+
+**Usage patterns:**
+```systemverilog
+// Pattern A — Deterministic (exactly 1 expected SLVERR):
+evm_report_handler::expect_error("SLVERR on write to RO");
+env.agent.write(RO_ADDR, 32'hDEAD, 4'hF, resp);
+
+// Pattern B — Race condition (ISR may clear before 2nd log — 1 or 2 OK):
+evm_report_handler::expect_error_range("SLVERR", 1, 2);
+trigger_fault_with_isr();
+
+// Pattern C — Optional (might not happen at all):
+evm_report_handler::expect_error_optional("startup overflow");
+run_startup_sequence();
+
+// Pattern D — Suppress noisy 3rd-party IP always:
+evm_report_handler::suppress_error("PHY link warning from vendor IP");
+
+// Pattern E — Complex conditional (catcher class):
+class isr_catcher extends evm_error_catcher;
+    bit   window_open = 0;
+    int   caught = 0;
+    virtual function bit catch_error(string id, string msg, string ctx);
+        if (!window_open) return 0;
+        if (caught < 3 && evm_report_handler::str_contains(msg, "SLVERR")) begin
+            caught++; return 1;
+        end
+        return 0;
+    endfunction
+endclass
+isr_catcher c = new("isr_c");
+evm_report_handler::register_error_catcher(c);
+c.window_open = 1;  // open window during active DMA
+trigger_dma();
+wait_dma_done();
+c.window_open = 0;
+evm_report_handler::unregister_error_catcher(c);
+if (c.caught < 1) log_error("Expected at least 1 SLVERR during DMA");
+```
+
+**`evm_log::log_expected_error(string msg)`** (instance method, added P0.3):
+```systemverilog
+// Logs as WARNING with [EXPECTED] prefix — never increments error_count.
+// Use when a component itself generates an expected error condition.
+log_expected_error("FIFO overflow during stress test — expected");
+```
+
+**print_summary() output (P0.3):**
+```
+[EVM] -----------------------------------------------------------------------
+[EVM] Expected Message Report:
+[EVM]  Type  Pattern                                 Min    Max   Seen  Status
+[EVM] -----------------------------------------------------------------------
+[EVM]  ERR   SLVERR on write to RO                      1      1      1  PASS
+[EVM]  ERR   SLVERR                                      1      2      1  PASS
+[EVM]  ERR   startup overflow                            0      1      0  PASS
+[EVM] -----------------------------------------------------------------------
+[EVM] ERRORs (unexpected):       0
+[EVM] ERRORs (absorbed/expected):3
+[EVM] Unmet expectations:        0
+[EVM] *** TEST PASSED ***
 ```
 
 ---
@@ -433,6 +566,12 @@ virtual function real get_duration();    // end - start in ns
 virtual function void mark_started();
 virtual function void mark_completed();
 
+// CRV Helper [P0.1] — call randomize() with error handling + debug logging
+// Returns 1 on success, 0 on failure (also logs EVM_ERROR → test FAILS)
+// Usage: if (!txn.randomize_item()) return;
+// For inline constraint: if (!txn.randomize() with { addr < 32'h100; }) ...
+virtual function bit randomize_item();
+
 // Must implement in derived classes:
 pure virtual function string convert2string();
 ```
@@ -452,6 +591,76 @@ virtual function void clear_items();
 virtual function int  get_item_count();
 virtual task          execute();           // override in derived class
 virtual function string convert2string();
+```
+
+---
+
+### `evm_rand_sequence` (virtual class — extends evm_sequence) [P0.1]
+**Source:** `vkit/src/evm_rand_sequence.sv`  
+**Added:** 2026-04-24 — Constrained Random Verification base class
+
+```systemverilog
+function new(string name="evm_rand_sequence");
+
+// execute(): logs seed, then calls body(). ALWAYS call super.execute() if overriding.
+virtual task execute();
+
+// body(): override this in derived classes — put stimulus here
+// Preferred override point (execute() calls body() for you)
+virtual task body();
+
+// log_crv_seed(): logs active seed at EVM_LOW — call manually if you override execute()
+// Output: [CRV] Sequence 'my_seq' running — to replay: +evm_seed=12345
+virtual function void log_crv_seed();
+
+virtual function string get_type_name();
+```
+
+**CRV sequence pattern (preferred — override body()):**
+```systemverilog
+class my_rand_write_seq extends evm_rand_sequence;
+    virtual task body();
+        my_axi_txn txn;
+        repeat (50) begin
+            txn = new("txn");
+            if (!txn.randomize_item()) return;   // auto-error + FAIL on bad constraints
+            add_item(txn);
+        end
+    endtask
+endclass
+```
+
+**CRV transaction pattern (declare rand fields + constraints):**
+```systemverilog
+class my_axi_txn extends evm_sequence_item;
+    rand logic [31:0] addr;
+    rand logic [31:0] data;
+    rand logic [3:0]  strb;
+    
+    constraint c_aligned { addr[1:0] == 2'b00; }          // 32-bit aligned
+    constraint c_strb    { strb inside {4'hF, 4'h3, 4'hC, 4'h1}; }
+    constraint c_nonzero { data != 0; }
+    
+    virtual function string convert2string();
+        return $sformatf("addr=0x%08x data=0x%08x strb=0x%x", addr, data, strb);
+    endfunction
+endclass
+```
+
+**Seed management:**
+- Call `evm_cmdline::set_random_seed()` from `build_phase` or `tb_top` initial block once
+- `+evm_seed=<N>` sets a deterministic seed; if absent, a random seed is auto-generated
+- The seed is **cached** after first resolution — consistent across all `get_seed()` calls
+- Every `evm_rand_sequence::execute()` logs the seed for replay
+
+**CRV replay workflow:**
+```
+# Failed run log shows:
+# [EVM CRV] Random seed: 847329  (replay: +evm_seed=847329)
+# [CRV] Sequence 'my_rand_seq' running — to replay: +evm_seed=847329
+
+# Replay the exact failure:
++evm_seed=847329
 ```
 
 ---
@@ -842,6 +1051,127 @@ task run_from_plusarg(evm_sequencer sqr);     // uses +EVM_SEQ=<name>
 // Plusargs:
 // +EVM_SEQ=<registered_name>  — run specific sequence via run_from_plusarg()
 ```
+
+---
+
+### `evm_coverage` + `evm_coverage_db` — Functional Coverage [P0.2]
+**Source:** `vkit/src/evm_coverage.sv`  
+**Added:** 2026-04-24
+
+```systemverilog
+// ── evm_coverage — virtual base class ───────────────────────────────────────
+// Extend this, declare covergroups in the constructor, override sample() and
+// get_coverage(). Register with evm_coverage_db::register(this) in build_phase.
+
+virtual class evm_coverage extends evm_component;
+    real coverage_target;      // minimum % for PASS (0 = no check, default)
+    
+    function new(string name, evm_component parent);
+    
+    virtual function void set_coverage_enable(bit enable);
+    function void         set_target(real pct);   // e.g. 90.0 = require 90%
+    function real         get_target();
+    
+    // Override these two in derived class:
+    virtual function void sample();         // call your_cg.sample() inside
+    virtual function real get_coverage();   // return your_cg.get_inst_coverage()
+    
+    // report_phase: prints coverage% + PASS/FAIL vs target;
+    //               logs EVM_ERROR if below target (→ test FAILS)
+    virtual function void report_phase();
+endclass
+
+// ── evm_coverage_collector#(T) — TLM-connected collector ────────────────────
+// Receives transactions via analysis_imp, calls write() for each.
+// Connection: monitor.analysis_port.connect(cov.analysis_imp.get_mailbox());
+
+virtual class evm_coverage_collector#(type T = evm_sequence_item) extends evm_coverage;
+    evm_analysis_imp#(T) analysis_imp;  // connect to monitor
+    
+    function new(string name, evm_component parent);
+    virtual task          main_phase();      // background: calls write() on each txn
+    virtual function void write(T txn);      // override: update cg inputs, call sample()
+endclass
+
+// ── evm_coverage_db — global registry ───────────────────────────────────────
+// Static singleton. Register all models; evm_base_test auto-calls print_summary().
+
+class evm_coverage_db;
+    static function void register(evm_coverage cov);     // call in build_phase
+    static function real get_total_coverage();            // average across all models
+    static function bit  check_all_targets();             // 0 = any model below target
+    static function void print_summary();                 // table with targets + PASS/FAIL
+    // [P0.2] write per-run CSV for evm_cov_merge.py
+    static function void write_log(string testname, string filename);
+endclass
+```
+
+**Full usage pattern:**
+```systemverilog
+// 1. Define coverage model:
+class my_axi_cov extends evm_coverage;
+    evm_axi_lite_write_txn last_txn;  // set by monitor before calling sample()
+    
+    covergroup axi_write_cg;
+        addr_cp: coverpoint last_txn.addr[15:12] {
+            bins low  = {[0:3]};
+            bins mid  = {[4:11]};
+            bins high = {[12:15]};
+        }
+        strb_cp: coverpoint last_txn.strb {
+            bins full    = {4'hF};
+            bins partial = {4'h1, 4'h3, 4'hC};
+        }
+        cross addr_cp, strb_cp;
+    endgroup
+    
+    function new(string name, evm_component parent);
+        super.new(name, parent);
+        axi_write_cg = new();
+        set_target(90.0);   // require 90% for PASS
+    endfunction
+    
+    virtual function void sample();
+        if (!coverage_enabled) return;
+        sample_count++;
+        axi_write_cg.sample();
+    endfunction
+    
+    virtual function real get_coverage();
+        return axi_write_cg.get_inst_coverage();
+    endfunction
+endclass
+
+// 2. In env build_phase:
+cov = new("axi_cov", this);
+evm_coverage_db::register(cov);   // ← required
+
+// 3. In monitor run_phase (or directly in env connect_phase with collector):
+cov.last_txn = collected_txn;
+cov.sample();
+
+// 4. evm_base_test.report_phase() auto-calls evm_coverage_db::print_summary()
+//    and check_all_targets() — no additional test code needed.
+```
+
+**Regression workflow (two-layer):**
+```
+# Layer 1 — per-run EVM reporting (happens automatically):
+# [COV] env.monitor.axi_cov   87.5%  BELOW TARGET (90.0%)
+
+# Layer 2a — EVM text merge (fast CI/CD gate):
+# Each run: +evm_cov_log=basic_write.evm_cov
+python evm-sv/python/evm_cov_merge.py *.evm_cov --threshold 90.0
+# Exit 0 = PASS, Exit 1 = FAIL (any model below target)
+
+# Layer 2b — Simulator-native bin-level merge (signoff):
+# Questa: vcover merge merged.ucdb *.ucdb
+# VCS:    urg -dir *.vdb -report merged_cov
+```
+
+**Plusargs:**
+- `+evm_cov_log=<file>` — write per-run CSV (handled by `evm_base_test.report_phase()`)
+- If no filename given: defaults to `<testname>.evm_cov`
 
 ---
 
