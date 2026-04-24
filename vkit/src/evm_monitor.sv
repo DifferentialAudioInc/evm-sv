@@ -6,11 +6,30 @@
 
 //==============================================================================
 // Class: evm_monitor
-// Description: Parameterized base monitor class for EVM
-//              Uses virtual interface for signal monitoring
-//              No config database - direct virtual interface assignment
+// Description: Parameterized base monitor class for EVM.
+//              Uses virtual interface for signal monitoring.
+//              No config database — direct virtual interface assignment.
+//
+// ── ANALYSIS PORT OWNERSHIP ─────────────────────────────────────────────────
+// evm_monitor creates analysis_port in its constructor, but evm_agent.build_phase()
+// immediately replaces it with the agent's own analysis_port (port aliasing).
+// After build_phase, monitor.analysis_port IS agent.analysis_port — same object.
+//
+// In derived monitors: call analysis_port.write(txn) as always.
+// In env connect_phase: connect to agent.analysis_port, NOT monitor.analysis_port.
+// ─────────────────────────────────────────────────────────────────────────────
+//
 // Author: Eric Dyer
 // Date: 2026-03-05
+// Updated: 2026-04-24 — analysis_port aliased to agent's port in build_phase
+//
+// API — Public Interface:
+//   [evm_monitor#(VIF, T)] — virtual base class
+//   analysis_port            — aliased to agent.analysis_port after build_phase
+//   set_vif(vif_handle)      — set the virtual interface handle
+//   run_phase()              — forks reset event monitor; override for collection
+//   on_reset_assert()        — called when reset asserted; pause collection
+//   on_reset_deassert()      — called when reset deasserted; resume collection
 //==============================================================================
 
 virtual class evm_monitor #(type VIF, type T = int) extends evm_component;
@@ -21,16 +40,16 @@ virtual class evm_monitor #(type VIF, type T = int) extends evm_component;
     VIF vif;
     
     //==========================================================================
-    // Analysis Port - Broadcast collected transactions
-    // Source: UVM pattern - all monitors have analysis_port
-    // Rationale: Monitors MUST broadcast to multiple components:
-    //            - Scoreboard needs transactions for checking
-    //            - Coverage needs transactions for functional coverage
-    //            - Checkers need transactions for protocol verification
-    //            This is THE standard way monitors communicate in verification
-    // Usage: In monitor: analysis_port.write(collected_transaction);
-    //        In env: scoreboard.analysis_imp.connect(monitor.analysis_port);
-    // UVM Equivalent: uvm_analysis_port#(transaction_type) analysis_port
+    // Analysis Port — broadcast collected transactions
+    // Created here in the monitor constructor, then immediately ALIASED to
+    // the agent's analysis_port in evm_agent.build_phase() (port aliasing).
+    //
+    // In derived monitor code:  analysis_port.write(txn);   ← unchanged
+    // In env connect_phase:     agent.analysis_port.connect(sb.analysis_imp.get_mailbox());
+    //                           ← connect to AGENT, not to monitor
+    //
+    // Protocol-specific extra ports (ap_write, ap_read, ap_err, etc.) are
+    // declared in derived monitors and remain there — accessed via get_monitor().
     //==========================================================================
     evm_analysis_port#(T) analysis_port;
     

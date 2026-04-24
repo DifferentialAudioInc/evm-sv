@@ -6,13 +6,45 @@
 
 //==============================================================================
 // Class: evm_driver
-// Description: Parameterized base driver class for EVM
-//              Uses virtual interface for driving signals
-//              No config database - direct virtual interface assignment
-//              run_phase() monitors reset events; main_phase() drives stimulus
+// Description: Parameterized base driver class for EVM.
+//              Uses virtual interface for driving signals.
+//              No config database — direct virtual interface assignment.
+//              run_phase() monitors reset events; main_phase() drives stimulus.
+//
+//   ── ARCHITECTURAL RULE (enforced by design) ──────────────────────────────
+//   evm_driver has NO analysis_port. This is intentional and mandatory.
+//
+//   Drivers ONLY drive the bus. They receive sequence items from the sequencer
+//   via seq_item_port, drive them on the VIF, and call item_done(). That is all.
+//
+//   Drivers NEVER:
+//     - Publish to scoreboards
+//     - Call analysis_port.write()
+//     - Have knowledge of scoreboards or predictors
+//
+//   Observed transactions to scoreboards come EXCLUSIVELY from evm_monitor
+//   via agent.analysis_port (monitor.analysis_port is aliased to agent's port).
+//   The monitor shares the same VIF and observes everything the driver drives.
+//
+//   Expected scoreboard values come from the test/sequence level via
+//   scoreboard.insert_expected() — the test knows what it intends to send.
+//   ─────────────────────────────────────────────────────────────────────────
+//
 // Author: Eric Dyer
 // Date: 2026-03-05
 // Updated: 2026-04-09 - Added run_phase reset monitoring, on_reset_* hooks
+// Updated: 2026-04-24 - Documented NO-analysis_port architectural rule
+//
+// API — Public Interface:
+//   [evm_driver#(VIF, REQ, RSP)] — virtual base class; NO analysis_port
+//   new(name, parent)       — constructor; creates seq_item_port
+//   set_vif(vif_handle)     — sets virtual interface handle
+//   run_phase()             — monitors reset events in background
+//   main_phase()            — override: drive stimulus from seq_item_port
+//   on_reset_assert()       — override: idle bus on reset
+//   on_reset_deassert()     — override: prepare bus after reset
+//   seq_item_port           — pull items from sequencer (get_next_item/item_done)
+//   vif                     — virtual interface handle (shared with monitor)
 //==============================================================================
 
 virtual class evm_driver #(type VIF, type REQ = int, type RSP = REQ) extends evm_component;

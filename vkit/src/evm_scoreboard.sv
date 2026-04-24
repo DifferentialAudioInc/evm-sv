@@ -24,7 +24,7 @@ class evm_scoreboard #(type T = int) extends evm_component;
     // Analysis Implementation - UVM Pattern
     // Source: UVM uvm_analysis_imp - standard way to receive from monitor
     // Usage: In environment connect_phase():
-    //        monitor.analysis_port.connect(scoreboard.analysis_imp.get_mailbox());
+    //        agent.analysis_port.connect(scoreboard.analysis_imp.get_mailbox());
     //==========================================================================
     evm_analysis_imp#(T) analysis_imp;
     

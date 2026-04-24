@@ -785,19 +785,22 @@ virtual function string get_type_name();
 ```systemverilog
 typedef enum { EVM_PASSIVE, EVM_ACTIVE } evm_agent_mode_e;
 
-evm_agent_mode_e           mode;       // EVM_ACTIVE (default) or EVM_PASSIVE
-evm_monitor#(VIF, T)       monitor;    // always created
-evm_driver#(VIF, T, T)     driver;     // only in ACTIVE mode
-evm_sequencer#(T, T)       sequencer;  // only in ACTIVE mode
+evm_agent_mode_e           mode;          // EVM_ACTIVE (default) or EVM_PASSIVE
+evm_analysis_port#(T)      analysis_port; // AGENT-OWNED primary observable port ←
+evm_monitor#(VIF, T)       monitor;       // always created; analysis_port aliased to agent's
+evm_driver#(VIF, T, T)     driver;        // only in ACTIVE mode
+evm_sequencer#(T, T)       sequencer;     // only in ACTIVE mode
 VIF                        vif;
 
 function new(string name="evm_agent", evm_component parent=null);
+// Constructor also creates: analysis_port = new("analysis_port", this)
 
 // Set VIF — propagates to driver + monitor
 function void set_vif(VIF vif_handle);
 
 // build_phase: creates monitor (always) + driver+sequencer (if ACTIVE)
-// Calls create_monitor() and create_driver() — OVERRIDE THESE
+// After create_monitor(): sets monitor.analysis_port = this.analysis_port (aliasing)
+// OVERRIDE create_monitor() and create_driver() in derived agents
 virtual function void build_phase();
 
 // connect_phase: connects driver.seq_item_port → sequencer.seq_item_export
@@ -816,6 +819,15 @@ function void             set_mode(evm_agent_mode_e new_mode);
 function evm_agent_mode_e get_mode();
 function bit              is_active();   // returns 1 if EVM_ACTIVE
 ```
+
+**Analysis Port Ownership Rule:**
+- `agent.analysis_port` is THE canonical connection point — external code connects here
+- In `build_phase()`, after `create_monitor()`, `monitor.analysis_port` is aliased to the agent's port
+- Monitor code calls `analysis_port.write(txn)` unchanged — but that IS the agent's port
+- Protocol-specific extra ports (`ap_write`, `ap_read`, `ap_err`) stay on the typed monitor,
+  accessed via `get_monitor()`
+- **In env connect_phase:** `agent.analysis_port.connect(sb.analysis_imp.get_mailbox());`  ← correct
+- **NOT:** `agent.monitor.analysis_port.connect(...)` ← old pattern, avoid
 
 ---
 
@@ -1389,6 +1401,70 @@ evm_pcie_agent   — PCIe stub (placeholder for future)
 
 ---
 
+## 🏛️ EVM Agent Architecture — Active/Passive Mode (CRITICAL RULE)
+
+**Every EVM agent shares ONE virtual interface (VIF) connected to the DUT. Both driver and monitor receive the same VIF handle.**
+
+```
+Active Agent (EVM_ACTIVE):
+  Sequences → Sequencer → Driver ──▶ VIF ──▶ DUT
+                                         │
+                           Monitor ◀──── VIF ◀── DUT
+                              │
+                              └── analysis_port  ← aliased to agent.analysis_port
+                                       │
+                              agent.analysis_port ──▶ Scoreboard/Predictor
+
+Passive Agent (EVM_PASSIVE):
+                           Monitor ◀──── VIF ◀── DUT
+                              │
+                              └── analysis_port  ← aliased to agent.analysis_port
+                                       │
+                              agent.analysis_port ──▶ Scoreboard/Predictor
+```
+
+**CRITICAL RULES:**
+1. **Only monitors publish to scoreboards** — via `analysis_port.write(txn)`. This is the ONLY path.
+2. **Drivers NEVER call analysis_port.write()** — drivers have no analysis ports. Period.
+3. **Expected scoreboard values** come from the TEST or SEQUENCE level via `sb.insert_expected()` — NOT from drivers.
+4. **Drivers only drive** — they assert signals on the VIF and return. That's it.
+5. **Both driver and monitor share the same VIF** — even in active mode, the monitor observes everything the driver puts on the bus.
+
+**Pattern for active agent scoreboards:**
+```systemverilog
+// Test level: TEST knows what it will send → pre-load scoreboard
+sb.insert_expected(expected_txn);    // test/sequence does this
+agent.driver.send_byte(data);        // driver just drives
+
+// Monitor observes the bus → publishes actual
+// monitor.analysis_port → sb.analysis_imp (automatic, via connect_phase)
+```
+
+---
+
+## 📁 Unit Test Location Rule
+
+**Unit tests for protocol agents live INSIDE the agent directory as `unit_test/`, NOT in `examples/`.**
+
+```
+evm-sv/vkit/evm_vkit/evm_<protocol>_agent/
+├── evm_<protocol>_if.sv
+├── evm_<protocol>_cfg.sv
+├── ... (agent source files)
+└── unit_test/
+    ├── tb/tb_top.sv
+    ├── dv/env/<protocol>_scoreboard.sv
+    ├── dv/env/<protocol>_unit_test_env.sv
+    ├── dv/env/<protocol>_unit_test_pkg.sv
+    ├── dv/tests/<protocol>_basic_test.sv
+    └── sim/filelist.f + run_sim.tcl
+```
+
+`examples/` is for DUT-level integration examples (e.g., example1 with AXI-Lite DUT).
+Agent unit tests go with the agent so they're always co-located with the source.
+
+---
+
 ## 🎯 Critical Coding Patterns
 
 ### 1. Always Call super First!
@@ -1479,11 +1555,11 @@ endclass
 ```systemverilog
 virtual function void connect_phase();
     super.connect_phase();
-    // Monitor → Scoreboard
-    agent.monitor.analysis_port.connect(scoreboard.analysis_imp.get_mailbox());
+    // Agent → Scoreboard (agent owns the primary observable port)
+    agent.analysis_port.connect(scoreboard.analysis_imp.get_mailbox());
     
-    // Monitor → RAL Predictor
-    agent.monitor.ap_write.connect(predictor.analysis_imp.get_mailbox());
+    // Protocol-specific ports stay on monitor — access via get_monitor()
+    agent.get_monitor().ap_write.connect(predictor.analysis_imp.get_mailbox());
     predictor.reg_map = reg_map_handle;
 endfunction
 ```

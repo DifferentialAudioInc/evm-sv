@@ -38,7 +38,7 @@
 //   spi_tgt.set_vif(spi_vif);
 //
 //   // After simulation: monitor publishes transactions on analysis_port
-//   spi_tgt.monitor.analysis_port.connect(sb.analysis_imp.get_mailbox());
+//   spi_tgt.analysis_port.connect(sb.analysis_imp.get_mailbox());
 //
 // API — Public Interface:
 //   [evm_spi_target_agent extends evm_agent#(virtual evm_spi_if, evm_spi_txn)]

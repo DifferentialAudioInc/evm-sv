@@ -76,5 +76,14 @@ package evm_vkit_pkg;
     `include "evm_i2c_agent/evm_i2c_initiator_driver.sv" // EVM=initiator, DUT=target
     `include "evm_i2c_agent/evm_i2c_target_agent.sv"     // target agent (PRIMARY)
     `include "evm_i2c_agent/evm_i2c_initiator_agent.sv"  // initiator agent
+
+    // ── UART Agent (P1.3) ────────────────────────────────────────────────────
+    // Note: evm_uart_if.sv (interface) is NOT included here — add to filelist.f
+    // Unified agent: TX driver (send_byte/send_string) + RX monitor (ap_rx/ap_err)
+    `include "evm_uart_agent/evm_uart_cfg.sv"            // cfg + parity enum + timing
+    `include "evm_uart_agent/evm_uart_txn.sv"            // transaction item
+    `include "evm_uart_agent/evm_uart_driver.sv"         // TX driver (drives vif.tx)
+    `include "evm_uart_agent/evm_uart_monitor.sv"        // RX monitor (watches vif.rx)
+    `include "evm_uart_agent/evm_uart_agent.sv"          // unified TX+RX agent
     
 endpackage : evm_vkit_pkg

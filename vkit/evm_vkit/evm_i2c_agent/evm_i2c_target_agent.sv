@@ -21,7 +21,7 @@
 //   i2c_tgt.set_vif(i2c_vif);
 //
 //   // Monitor publishes transactions:
-//   i2c_tgt.monitor.analysis_port.connect(sb.analysis_imp.get_mailbox());
+//   i2c_tgt.analysis_port.connect(sb.analysis_imp.get_mailbox());
 //==============================================================================
 
 class evm_i2c_target_agent extends evm_agent#(virtual evm_i2c_if, evm_i2c_txn);

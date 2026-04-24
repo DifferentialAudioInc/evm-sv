@@ -163,7 +163,7 @@ endclass : evm_coverage
 //              Extend this, declare covergroups, override write() to sample.
 //
 // Connection pattern (in env connect_phase):
-//   monitor.analysis_port.connect(cov.analysis_imp.get_mailbox());
+//   agent.analysis_port.connect(cov.analysis_imp.get_mailbox());
 //==============================================================================
 virtual class evm_coverage_collector#(type T = evm_sequence_item) extends evm_coverage;
     
