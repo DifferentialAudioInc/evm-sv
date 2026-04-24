@@ -52,5 +52,17 @@ package evm_vkit_pkg;
     // `include "evm_axi4_full_agent/evm_axi4_full_driver.sv"  // needs refactor
     // `include "evm_axi4_full_agent/evm_axi4_full_monitor.sv" // needs refactor
     // `include "evm_axi4_full_agent/evm_axi4_full_agent.sv"   // needs refactor
+
+    // ── SPI Agent (P1.1) ─────────────────────────────────────────────────────
+    // Note: evm_spi_if.sv (interface) is NOT included here — add to filelist.f
+    // Include order: device_model → cfg → txn → monitor → drivers → agents
+    `include "evm_spi_agent/evm_spi_device_model.sv"     // memory-backed device model
+    `include "evm_spi_agent/evm_spi_cfg.sv"              // cfg + evm_spi_mode_e enum
+    `include "evm_spi_agent/evm_spi_txn.sv"              // transaction item
+    `include "evm_spi_agent/evm_spi_monitor.sv"          // passive observer
+    `include "evm_spi_agent/evm_spi_target_driver.sv"    // EVM=target, DUT=initiator
+    `include "evm_spi_agent/evm_spi_initiator_driver.sv" // EVM=initiator, DUT=target
+    `include "evm_spi_agent/evm_spi_target_agent.sv"     // target agent (PRIMARY)
+    `include "evm_spi_agent/evm_spi_initiator_agent.sv"  // initiator agent
     
 endpackage : evm_vkit_pkg

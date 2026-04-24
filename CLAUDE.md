@@ -1,8 +1,9 @@
 # CLAUDE.md — EVM Deep Reference
 # Project: evm-sv (Embedded Verification Methodology)
 
-**Last Updated:** 2026-04-23  
-**Status:** Production Ready ✅  
+**Last Updated:** 2026-04-24  
+**Version:** 0.1.0  
+**Status:** ⚠️ Experimental — subject to change without notice  
 **License:** MIT — Copyright (c) 2026 Differential Audio Inc.
 
 ---

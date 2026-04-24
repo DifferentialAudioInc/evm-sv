@@ -2,6 +2,11 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![AI-First Development](https://img.shields.io/badge/Development-AI--First-blue)](CLAUDE.md)
+[![Version](https://img.shields.io/badge/Version-0.1.0-orange)](CLAUDE.md)
+[![Status](https://img.shields.io/badge/Status-Experimental-red)](CLAUDE.md)
+
+> ⚠️ **Experimental — v0.1.0.** APIs and architecture are subject to change without notice.  
+> Not recommended for production use without thorough independent validation.
 
 **A lightweight SystemVerilog verification framework for embedded FPGA/ASIC IP verification**
 
@@ -12,7 +17,7 @@
 
 ## What is EVM?
 
-EVM (Embedded Verification Methodology) is a production-ready alternative to UVM optimized for embedded ASIC/FPGA IP verification. It delivers the verification patterns engineers actually use — without the UVM overhead that slows small-to-medium teams down.
+EVM (Embedded Verification Methodology) is an experimental (v0.1.0) lightweight alternative to UVM for embedded ASIC/FPGA IP verification. It delivers the verification patterns engineers actually use — without the UVM overhead that slows small-to-medium teams down.
 
 | | UVM | EVM |
 |---|---|---|
